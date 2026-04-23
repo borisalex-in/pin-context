@@ -1,0 +1,61 @@
+# Compiled output
+out/
+*.vsix
+
+# Node modules
+node_modules/
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode-test/
+.vscode/.ropeproject
+.idea/
+*.swp
+*.swo
+*~
+
+# TypeScript
+*.tsbuildinfo
+
+# Testing
+.vscode-test/
+test-results/
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Coverage
+coverage/
+.nyc_output/
+
+# Build artifacts
+dist/
+lib/
+
+# Temporary files
+tmp/
+temp/
+
+# VS Code extension specific
+*.code-workspace
+.history/
+
+# npm
+package-lock.json
+yarn.lock
+
+# Extension packaging
+*.vsix
+*.vsixmanifest

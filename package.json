@@ -1,0 +1,423 @@
+{
+  "name": "pin-context",
+  "displayName": "Pin Context",
+  "description": "Advanced pin management for VS Code editors with keyboard shortcuts",
+  "version": "0.0.1",
+  "publisher": "borisalex-in",
+  "icon": "images/icon.png",
+  "author": {
+    "name": "Alexander Boris",
+    "email": "borisalex.in@yandex.com",
+    "url": "https://github.com/borisalex-in"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/borisalex-in/pin-context.git"
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "release:patch": "npm version patch -m \"release: %s\" && npm run build:vsix && git push --follow-tags",
+    "release:minor": "npm version minor -m \"release: %s\" && npm run build:vsix && git push --follow-tags",
+    "release:major": "npm version major -m \"release: %s\" && npm run build:vsix && git push --follow-tags",
+    "hotfix:patch": "npm version patch -m \"hotfix: %s\" && npm run build:vsix && git push --follow-tags",
+    "build": "npm run compile",
+    "build:vsix": "npm run compile && vsce package",
+    "publish": "npm run compile && npm run build:vsix && npm run unpublish && code --install-extension pin-context-$(npm run version --silent).vsix",
+    "publish:vsix": "vsce publish",
+    "publish:release": "npm run release:patch && npm run publish:vsix",
+    "clean": "rm -rf out *.vsix",
+    "install:local": "code --install-extension pin-context-$(node -p \"require('./package.json').version\").vsix",
+    "reinstall:local": "npm run build:vsix && npm run install:local"
+  },
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:pin-context.pinCurrentEditor",
+    "onCommand:pin-context.unpinCurrentEditor",
+    "onCommand:pin-context.togglePinCurrentEditor",
+    "onCommand:pin-context.pinAllEditors",
+    "onCommand:pin-context.unpinAllEditors",
+    "onCommand:pin-context.pinEditorsByPattern",
+    "onCommand:pin-context.refreshPinnedView",
+    "onCommand:pin-context.toggleViewMode",
+    "onCommand:pin-context.unpinFromTree",
+    "onCommand:pin-context.revealInExplorer",
+    "onCommand:pin-context.copyPathFromTree",
+    "onCommand:pin-context.createContext",
+    "onCommand:pin-context.switchContext",
+    "onCommand:pin-context.switchContextById",
+    "onCommand:pin-context.saveCurrentToContext",
+    "onCommand:pin-context.openContextTimeline",
+    "onCommand:pin-context.quickOpenPinned",
+    "onCommand:pin-context.renameContext",
+    "onCommand:pin-context.deleteContext",
+    "onView:pin-context.pinnedView"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "views": {
+      "explorer": [
+        {
+          "id": "pin-context.pinnedView",
+          "name": "Pinned Files"
+        }
+      ]
+    },
+    "commands": [
+      {
+        "command": "pin-context.pinCurrentEditor",
+        "title": "Pin Current Editor",
+        "category": "Pin Context",
+        "icon": "$(pin)"
+      },
+      {
+        "command": "pin-context.unpinCurrentEditor",
+        "title": "Unpin Current Editor",
+        "category": "Pin Context",
+        "icon": "$(pinned)"
+      },
+      {
+        "command": "pin-context.togglePinCurrentEditor",
+        "title": "Toggle Pin Current Editor",
+        "category": "Pin Context"
+      },
+      {
+        "command": "pin-context.pinAllEditors",
+        "title": "Pin All Opened Editors",
+        "category": "Pin Context"
+      },
+      {
+        "command": "pin-context.unpinAllEditors",
+        "title": "Unpin All Editors",
+        "category": "Pin Context"
+      },
+      {
+        "command": "pin-context.pinEditorsByPattern",
+        "title": "Pin Editors by Pattern",
+        "category": "Pin Context"
+      },
+      {
+        "command": "pin-context.refreshPinnedView",
+        "title": "Refresh Pinned Files View",
+        "category": "Pin Context",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "pin-context.toggleViewMode",
+        "title": "Toggle View Mode (Tree/List)",
+        "category": "Pin Context",
+        "icon": "$(list-tree)"
+      },
+      {
+        "command": "pin-context.unpinFromTree",
+        "title": "Unpin",
+        "category": "Pin Context",
+        "icon": "$(pinned)"
+      },
+      {
+        "command": "pin-context.revealInExplorer",
+        "title": "Reveal in Explorer",
+        "category": "Pin Context"
+      },
+      {
+        "command": "pin-context.copyPathFromTree",
+        "title": "Copy Path",
+        "category": "Pin Context"
+      },
+      {
+        "command": "pin-context.createContext",
+        "title": "Create Context",
+        "category": "Pin Context",
+        "icon": "$(new-folder)"
+      },
+      {
+        "command": "pin-context.switchContext",
+        "title": "Switch Context",
+        "category": "Pin Context",
+        "icon": "$(arrow-swap)"
+      },
+      {
+        "command": "pin-context.switchContextById",
+        "title": "Switch Context By Id",
+        "category": "Pin Context"
+      },
+      {
+        "command": "pin-context.saveCurrentToContext",
+        "title": "Save Current Pins to Context",
+        "category": "Pin Context",
+        "icon": "$(save)"
+      },
+      {
+        "command": "pin-context.openContextTimeline",
+        "title": "Open Context Timeline",
+        "category": "Pin Context",
+        "icon": "$(history)"
+      },
+      {
+        "command": "pin-context.quickOpenPinned",
+        "title": "Quick Open Pinned File",
+        "category": "Pin Context",
+        "icon": "$(search)"
+      },
+      {
+        "command": "pin-context.renameContext",
+        "title": "Rename Context",
+        "category": "Pin Context",
+        "icon": "$(edit)"
+      },
+      {
+        "command": "pin-context.deleteContext",
+        "title": "Delete Context",
+        "category": "Pin Context",
+        "icon": "$(trash)"
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "pin-context.pinCurrentEditor",
+        "key": "ctrl+cmd+k",
+        "mac": "ctrl+cmd+k",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "pin-context.unpinCurrentEditor",
+        "key": "ctrl+cmd+u",
+        "mac": "ctrl+cmd+u",
+        "when": "editorTextFocus"
+      },
+      {
+        "command": "pin-context.togglePinCurrentEditor",
+        "key": "alt+cmd+k",
+        "mac": "alt+cmd+k",
+        "when": "editorTextFocus"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "pin-context.refreshPinnedView",
+          "when": "view == pin-context.pinnedView",
+          "group": "navigation@1"
+        },
+        {
+          "command": "pin-context.toggleViewMode",
+          "when": "view == pin-context.pinnedView",
+          "group": "navigation@2"
+        },
+        {
+          "command": "pin-context.switchContext",
+          "when": "view == pin-context.pinnedView",
+          "group": "navigation@3"
+        },
+        {
+          "command": "pin-context.quickOpenPinned",
+          "when": "view == pin-context.pinnedView",
+          "group": "navigation@4"
+        },
+        {
+          "command": "pin-context.createContext",
+          "when": "view == pin-context.pinnedView",
+          "group": "navigation@5"
+        },
+        {
+          "command": "pin-context.renameContext",
+          "when": "view == pin-context.pinnedView",
+          "group": "navigation@6"
+        },
+        {
+          "command": "pin-context.deleteContext",
+          "when": "view == pin-context.pinnedView",
+          "group": "navigation@7"
+        },
+        {
+          "command": "pin-context.refreshPinnedView",
+          "when": "view == pin-context.pinnedView",
+          "group": "2_view@1"
+        },
+        {
+          "command": "pin-context.toggleViewMode",
+          "when": "view == pin-context.pinnedView",
+          "group": "2_view@2"
+        }
+      ],
+      "view/item/context": [
+        {
+          "command": "pin-context.unpinFromTree",
+          "when": "view == pin-context.pinnedView && viewItem == pinnedFile",
+          "group": "inline@1"
+        },
+        {
+          "command": "pin-context.revealInExplorer",
+          "when": "view == pin-context.pinnedView && viewItem == pinnedFile",
+          "group": "navigation@2"
+        },
+        {
+          "command": "pin-context.copyPathFromTree",
+          "when": "view == pin-context.pinnedView && viewItem == pinnedFile",
+          "group": "navigation@3"
+        },
+        {
+          "command": "pin-context.toggleViewMode",
+          "when": "view == pin-context.pinnedView && (viewItem == pinnedFile || viewItem == pinnedFolder)",
+          "group": "navigation@10"
+        },
+        {
+          "command": "pin-context.refreshPinnedView",
+          "when": "view == pin-context.pinnedView && (viewItem == pinnedFile || viewItem == pinnedFolder)",
+          "group": "navigation@11"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "pin-context.pinCurrentEditor",
+          "when": "resourceScheme == file",
+          "group": "navigation@20"
+        },
+        {
+          "command": "pin-context.unpinCurrentEditor",
+          "when": "resourceScheme == file",
+          "group": "navigation@21"
+        },
+        {
+          "command": "pin-context.togglePinCurrentEditor",
+          "when": "resourceScheme == file",
+          "group": "navigation@22"
+        }
+      ]
+    },
+    "configuration": {
+      "title": "Pin Context",
+      "properties": {
+        "pin-context.viewMode": {
+          "type": "string",
+          "default": "tree",
+          "enum": [
+            "tree",
+            "list"
+          ],
+          "enumDescriptions": [
+            "Show pinned files grouped by folder",
+            "Show pinned files as a flat list"
+          ],
+          "description": "Display mode for pinned files view"
+        },
+        "pin-context.confirmBeforeUnpinAll": {
+          "type": "boolean",
+          "default": true,
+          "description": "Show confirmation dialog before unpinning all editors"
+        },
+        "pin-context.showPinnedCountInStatusBar": {
+          "type": "boolean",
+          "default": true,
+          "description": "Display the number of pinned editors in the status bar"
+        },
+        "pin-context.persistenceScope": {
+          "type": "string",
+          "default": "globalState",
+          "enum": [
+            "globalState",
+            "workspaceState"
+          ],
+          "enumDescriptions": [
+            "Persist pinned files globally across all workspaces",
+            "Persist pinned files only in the current workspace"
+          ],
+          "description": "Storage scope used for pinned files persistence"
+        },
+        "pin-context.restoreBehavior": {
+          "type": "string",
+          "default": "keepInTree",
+          "enum": [
+            "keepInTree",
+            "reopenAndPin"
+          ],
+          "enumDescriptions": [
+            "Keep pinned files visible in the sidebar even when closed",
+            "Try to reopen persisted files and pin their tabs on startup"
+          ],
+          "description": "How persisted pinned files are restored when the extension starts"
+        },
+        "pin-context.batchSize": {
+          "type": "number",
+          "default": 8,
+          "minimum": 1,
+          "maximum": 20,
+          "description": "Maximum number of files processed per batch during pin/unpin operations"
+        },
+        "pin-context.findFilesMaxResults": {
+          "type": "number",
+          "default": 2000,
+          "minimum": 100,
+          "maximum": 10000,
+          "description": "Maximum number of file matches returned by workspace search for pattern pinning"
+        },
+        "pin-context.restoreReopenLimit": {
+          "type": "number",
+          "default": 50,
+          "minimum": 0,
+          "maximum": 500,
+          "description": "Maximum number of files to reopen and re-pin on startup when restoreBehavior is reopenAndPin"
+        },
+        "pin-context.debug": {
+          "type": "boolean",
+          "default": false,
+          "description": "Enable debug logs for pinning operations and restore behavior"
+        },
+        "pin-context.contexts.autoGitContexts": {
+          "type": "boolean",
+          "default": false,
+          "description": "Automatically maintain git-aware contexts per branch"
+        },
+        "pin-context.contexts.restoreLastContext": {
+          "type": "boolean",
+          "default": false,
+          "description": "Restore the last active context on extension activation"
+        },
+        "pin-context.contexts.timelineEnabled": {
+          "type": "boolean",
+          "default": true,
+          "description": "Track context history for quick switching"
+        },
+        "pin-context.contexts.maxTimelineEntries": {
+          "type": "number",
+          "default": 100,
+          "minimum": 10,
+          "maximum": 1000,
+          "description": "Maximum number of context history entries to retain"
+        },
+        "pin-context.contexts.persistenceScope": {
+          "type": "string",
+          "default": "globalState",
+          "enum": [
+            "globalState",
+            "workspaceState"
+          ],
+          "enumDescriptions": [
+            "Persist contexts globally across all workspaces",
+            "Persist contexts only in the current workspace"
+          ],
+          "description": "Persistence scope for context metadata"
+        }
+      }
+    }
+  },
+  "devDependencies": {
+    "@types/node": "20.x",
+    "@types/vscode": "^1.85.0",
+    "@vscode/vsce": "^2.24.0",
+    "conventional-changelog-cli": "^5.0.0",
+    "path": "^0.12.7",
+    "typescript": "^5.3.0"
+  },
+  "overrides": {
+    "cheerio": "1.0.0-rc.12"
+  },
+  "dependencies": {
+    "minimatch": "^10.2.5"
+  }
+}
