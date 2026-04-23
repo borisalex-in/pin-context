@@ -2,7 +2,7 @@
   "name": "pin-context",
   "displayName": "Pin Context",
   "description": "Advanced pin management for VS Code editors with keyboard shortcuts",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "borisalex-in",
   "icon": "images/icon.png",
   "author": {
