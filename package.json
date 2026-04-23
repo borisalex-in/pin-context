@@ -17,6 +17,13 @@
   "scripts": {
     "compile": "tsc -p ./",
     "watch": "tsc -watch -p ./",
+    "docs:serve": "http-server ./docs -p 4173 -c-1",
+    "lint": "eslint \"src/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" --fix",
+    "format": "prettier --write \"**/*.{ts,js,json,md,css,html,yml,yaml}\"",
+    "format:check": "prettier --check \"**/*.{ts,js,json,md,css,html,yml,yaml}\"",
+    "precommit:check": "npm run format:check && npm run lint && npm run compile",
+    "prepare": "husky",
     "release:patch": "npm version patch -m \"release: %s\" && npm run build:vsix && git push --follow-tags",
     "release:minor": "npm version minor -m \"release: %s\" && npm run build:vsix && git push --follow-tags",
     "release:major": "npm version major -m \"release: %s\" && npm run build:vsix && git push --follow-tags",
@@ -30,6 +37,28 @@
     "install:local": "code --install-extension pin-context-$(node -p \"require('./package.json').version\").vsix",
     "reinstall:local": "npm run build:vsix && npm run install:local"
   },
+  "keywords": [
+    "pin tabs",
+    "pinned tabs",
+    "pin files",
+    "bookmark files",
+    "code bookmarks",
+    "tab manager",
+    "editor tabs",
+    "workspace navigation",
+    "code navigation",
+    "file navigation",
+    "context switching",
+    "workflow management",
+    "task context",
+    "developer productivity",
+    "quick open",
+    "fuzzy search",
+    "workspace tools",
+    "sidebar tools",
+    "git workflow",
+    "context manager"
+  ],
   "engines": {
     "vscode": "^1.85.0"
   },
@@ -180,20 +209,20 @@
     "keybindings": [
       {
         "command": "pin-context.pinCurrentEditor",
-        "key": "ctrl+cmd+k",
-        "mac": "ctrl+cmd+k",
+        "key": "ctrl+shift+k",
+        "mac": "cmd+alt+k",
         "when": "editorTextFocus"
       },
       {
         "command": "pin-context.unpinCurrentEditor",
-        "key": "ctrl+cmd+u",
-        "mac": "ctrl+cmd+u",
+        "key": "ctrl+shift+l",
+        "mac": "cmd+alt+l",
         "when": "editorTextFocus"
       },
       {
         "command": "pin-context.togglePinCurrentEditor",
-        "key": "alt+cmd+k",
-        "mac": "alt+cmd+k",
+        "key": "ctrl+shift+j",
+        "mac": "cmd+alt+j",
         "when": "editorTextFocus"
       }
     ],
@@ -409,9 +438,16 @@
   "devDependencies": {
     "@types/node": "20.x",
     "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^8.59.0",
+    "@typescript-eslint/parser": "^8.59.0",
     "@vscode/vsce": "^2.24.0",
     "conventional-changelog-cli": "^5.0.0",
+    "eslint": "^9.39.4",
+    "eslint-config-prettier": "^10.1.8",
+    "http-server": "^14.1.1",
+    "husky": "^9.1.7",
     "path": "^0.12.7",
+    "prettier": "^3.8.3",
     "typescript": "^5.3.0"
   },
   "overrides": {

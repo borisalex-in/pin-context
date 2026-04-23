@@ -15,17 +15,18 @@ Pin Context turns pinned tabs into a fast workflow/navigation system for VS Code
 - ⚡ **Quick access UX**: command palette + fuzzy quick picks for contexts, timeline, and pinned files.
 - 🕘 **Context timeline**: jump back to recently used contexts (`Today`, `Yesterday`, `Older`).
 - 📁 **Dedicated sidebar**: sections for active context, contexts, recent contexts, and pinned files.
+- 🖱️ **Drag and drop pinning**: drag files into `Pinned Files` to pin instantly and sync active context.
 - 🚀 **Scalable behavior**: batching, debounce, caching, and progress reporting for large tab sets.
 - 💾 **Configurable persistence**: choose global or workspace scope for pins and contexts.
 - 📊 **Status bar integration**: live pinned count with low-noise updates.
 
-## ⌨️ Keyboard Shortcuts (macOS)
+## ⌨️ Keyboard Shortcuts (Default)
 
-| Action | Shortcut |
-|--------|----------|
-| Pin Current Editor | `Ctrl + Cmd + K` |
-| Unpin Current Editor | `Ctrl + Cmd + U` |
-| Toggle Pin | `Alt + Cmd + K` |
+| Action               | macOS              | Windows/Linux      |
+| -------------------- | ------------------ | ------------------ |
+| Pin Current Editor   | `Cmd + Option + K` | `Ctrl + Shift + K` |
+| Unpin Current Editor | `Cmd + Option + L` | `Ctrl + Shift + L` |
+| Toggle Pin           | `Cmd + Option + J` | `Ctrl + Shift + J` |
 
 > **Windows/Linux users:** Open Keyboard Shortcuts (`Ctrl+K Ctrl+S`) and search for `pin-context` to customize.
 
@@ -33,23 +34,23 @@ Pin Context turns pinned tabs into a fast workflow/navigation system for VS Code
 
 Open Command Palette (`Cmd+Shift+P`) and type `Pin Context`:
 
-| Command | Description |
-|---------|-------------|
-| `Pin Context: Pin Current Editor` | Pin the active editor tab |
-| `Pin Context: Unpin Current Editor` | Unpin the active editor tab |
-| `Pin Context: Toggle Pin Current Editor` | Toggle pin state |
-| `Pin Context: Pin All Opened Editors` | Pin every open editor |
-| `Pin Context: Unpin All Editors` | Unpin all pinned editors |
-| `Pin Context: Pin Editors by Pattern` | Pin editors matching glob pattern |
-| `Pin Context: Toggle View Mode` | Switch between Tree and List view |
-| `Pin Context: Refresh Pinned Files View` | Manually refresh the sidebar |
-| `Pin Context: Create Context` | Create a named pin context |
-| `Pin Context: Switch Context` | Fuzzy-switch between contexts |
-| `Pin Context: Rename Context` | Rename an existing manual context |
-| `Pin Context: Delete Context` | Delete a manual context |
+| Command                                     | Description                                    |
+| ------------------------------------------- | ---------------------------------------------- |
+| `Pin Context: Pin Current Editor`           | Pin the active editor tab                      |
+| `Pin Context: Unpin Current Editor`         | Unpin the active editor tab                    |
+| `Pin Context: Toggle Pin Current Editor`    | Toggle pin state                               |
+| `Pin Context: Pin All Opened Editors`       | Pin every open editor                          |
+| `Pin Context: Unpin All Editors`            | Unpin all pinned editors                       |
+| `Pin Context: Pin Editors by Pattern`       | Pin editors matching glob pattern              |
+| `Pin Context: Toggle View Mode`             | Switch between Tree and List view              |
+| `Pin Context: Refresh Pinned Files View`    | Manually refresh the sidebar                   |
+| `Pin Context: Create Context`               | Create a named pin context                     |
+| `Pin Context: Switch Context`               | Fuzzy-switch between contexts                  |
+| `Pin Context: Rename Context`               | Rename an existing manual context              |
+| `Pin Context: Delete Context`               | Delete a manual context                        |
 | `Pin Context: Save Current Pins to Context` | Persist current pinned set into active context |
-| `Pin Context: Open Context Timeline` | Open recent context history |
-| `Pin Context: Quick Open Pinned File` | Keyboard-first search across pinned files |
+| `Pin Context: Open Context Timeline`        | Open recent context history                    |
+| `Pin Context: Quick Open Pinned File`       | Keyboard-first search across pinned files      |
 
 ## 🗃️ Sidebar Sections
 
@@ -125,6 +126,12 @@ In the `Pinned Files` view:
 4. Return quickly via `Open Context Timeline`.
 5. Open any pinned file instantly via `Quick Open Pinned File`.
 
+## 🖱️ Drag and Drop
+
+- Drag files from Explorer into `Pinned Files` to pin them instantly.
+- Dropped files are synchronized with the active manual context automatically.
+- Supports common VS Code drag payloads (`uri-list`, explorer tree payloads).
+
 ## 🎛️ Customize Shortcuts by Command
 
 You can override defaults in `keybindings.json`:
@@ -172,6 +179,9 @@ A modern project landing page is available in `docs/`:
 
 - Entry file: `docs/index.html`
 - Styles: `docs/styles.css`
+- Script: `docs/script.js`
+- Translations: `docs/i18n/en.json`, `docs/i18n/ru.json`
+- Includes language switcher (EN/RU) and platform switcher (macOS / Windows/Linux) for shortcut display.
 
 To publish it with GitHub Pages:
 
@@ -181,3 +191,32 @@ To publish it with GitHub Pages:
    - **Branch**: `master` (or your default branch)
    - **Folder**: `/docs`
 3. Save and wait for deployment to complete.
+
+> Works on GitHub Pages as static assets: `index.html` loads `script.js`, and `script.js` fetches translation JSON files from `docs/i18n/`.
+>
+> For local preview, use HTTP (not `file://`):
+>
+> - `npm run docs:serve`
+> - open [http://localhost:4173](http://localhost:4173)
+
+## 🧹 Code Quality
+
+This project includes ESLint + Prettier + Husky pre-commit checks.
+
+### Available scripts
+
+- `npm run lint`: run ESLint for TypeScript sources.
+- `npm run lint:fix`: auto-fix lint issues when possible.
+- `npm run format`: apply Prettier formatting.
+- `npm run format:check`: verify Prettier formatting.
+- `npm run compile`: TypeScript compile check.
+- `npm run docs:serve`: run local HTTP server for `docs/`.
+- `npm run precommit:check`: runs `format:check`, `lint`, `compile`.
+
+### Pre-commit hook
+
+Before each commit, Husky runs:
+
+1. `npm run format:check`
+2. `npm run lint`
+3. `npm run compile`

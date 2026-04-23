@@ -51,6 +51,7 @@ temp/
 # VS Code extension specific
 *.code-workspace
 .history/
+.vscode
 
 # npm
 package-lock.json

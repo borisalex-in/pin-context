@@ -6,7 +6,7 @@
     <title>Pin Context - VS Code Extension</title>
     <meta
       name="description"
-      content="Pin Context for VS Code: fast pinning, smart contexts, and keyboard-first workflow navigation."
+      content="Pin Context for VS Code: keyboard-first pinning, task contexts, and fast workspace navigation."
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -14,34 +14,115 @@
       href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap"
       rel="stylesheet"
     />
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
     <div class="page">
       <header class="topbar">
         <a class="brand" href="#">
-          <span class="brand-dot" aria-hidden="true"></span>
+          <svg
+            width="32"
+            height="32"
+            viewBox="0 0 128 128"
+            fill="none"
+            xmlns="http://www.w3.org/2000/svg"
+          >
+            <g clip-path="url(#clip0_260_71)">
+              <mask
+                id="mask0_260_71"
+                style="mask-type: alpha"
+                maskUnits="userSpaceOnUse"
+                x="0"
+                y="0"
+                width="128"
+                height="128"
+              >
+                <rect y="4.67774e-06" width="128" height="128" rx="24" fill="#20252C" />
+              </mask>
+              <g mask="url(#mask0_260_71)">
+                <rect width="128" height="128" rx="24" fill="#20252C" />
+                <g opacity="0.3">
+                  <path
+                    opacity="0.2"
+                    d="M220.771 3.12431C89.9253 -3.70815 -129.772 41.3429 38.2026 276.207"
+                    stroke="#85E281"
+                  />
+                  <path
+                    opacity="0.2"
+                    d="M204.748 -23.2779C73.9506 -15.5671 -139.401 53.5547 53.5684 268.356"
+                    stroke="#85E281"
+                  />
+                  <path
+                    opacity="0.2"
+                    d="M185.767 -45.1898C56.6308 -23.0308 -147.746 69.3101 67.8403 261.402"
+                    stroke="#85E281"
+                  />
+                </g>
+                <path
+                  d="M71.2358 83.3506H69.4978L44.8972 58.6667V56.9227C49.1354 52.6702 56.3235 50.2948 62.2727 53.5952L72.8042 43.028C72.1257 40.9757 71.2555 37.5273 74.7709 34H76.5089L93.9582 51.5084V53.2523C90.4501 56.7723 87.1117 56.0051 85.091 55.3515L74.5423 65.9335C77.3743 71.3379 76.0664 78.5061 71.2358 83.3506ZM47.5448 57.8354L70.3287 80.6965C73.8416 76.4809 74.5791 70.5264 71.9659 66.3898L72.1331 64.8555L83.8864 53.0649L85.1451 52.7664L85.3909 52.8503C86.9986 53.3954 88.9678 54.0663 91.2909 52.3199L75.7001 36.6788C74.0162 38.9728 74.702 40.9831 75.265 42.6383L75.3781 42.9688L75.0806 44.2317L63.3273 56.0224L61.781 56.1778C57.2258 53.1512 51.3012 54.7077 47.5448 57.8354Z"
+                  fill="#5CB458"
+                />
+                <path
+                  d="M57.9952 71.8313L46.9327 82.9313L41.4015 88.4813C40.487 89.4137 39.543 90.3165 38.6506 91.2711C37.4755 91.942 36.2783 92.5907 35 93.1581C35.5654 91.8754 36.212 90.6741 36.8806 89.4951C37.832 88.5997 38.7318 87.6525 39.661 86.7349L45.1922 81.1849L56.2547 70.0849L57.125 69.2141L58.863 70.9581L57.9952 71.8313Z"
+                  fill="#5CB458"
+                />
+                <path
+                  d="M84.1053 54.9839C82.1263 53.7407 80.5923 52.3717 79.4172 50.8029L81.3864 49.3205C82.3894 50.6623 83.6702 51.797 85.4131 52.8922L84.1053 54.9839Z"
+                  fill="#5CB458"
+                />
+              </g>
+            </g>
+            <defs>
+              <clipPath id="clip0_260_71">
+                <rect width="128" height="128" fill="white" />
+              </clipPath>
+            </defs>
+          </svg>
+
           <span>Pin Context</span>
         </a>
         <nav class="nav">
-          <a href="#features">Features</a>
-          <a href="#commands">Commands</a>
-          <a href="#workflow">Workflow</a>
+          <a href="#features" data-i18n="nav-features">Features</a>
+          <a href="#commands" data-i18n="nav-commands">Commands</a>
+          <a href="#workflow" data-i18n="nav-workflow">Workflow</a>
         </nav>
-        <a class="button button--small" href="https://github.com/borisalex-in/pin-context">GitHub</a>
+        <div class="topbar-actions">
+          <div class="lang-switch" role="group" aria-label="Language switcher">
+            <button class="lang-btn active" type="button" data-lang="en" aria-pressed="true">
+              EN
+            </button>
+            <button class="lang-btn" type="button" data-lang="ru" aria-pressed="false">RU</button>
+          </div>
+          <a
+            class="button button--small"
+            href="https://github.com/borisalex-in/pin-context"
+            data-i18n="github-btn"
+            >GitHub</a
+          >
+        </div>
       </header>
 
       <main>
         <section class="hero">
-          <p class="eyebrow">VS CODE EXTENSION</p>
-          <h1>Stop losing tabs.<br />Work by context.</h1>
-          <p class="hero-copy">
-            Pin Context turns pinned files into a fast, keyboard-first navigation flow with
-            dedicated contexts, timeline history, and scalable behavior for large projects.
+          <p class="eyebrow" data-i18n="hero-eyebrow">VS CODE EXTENSION</p>
+          <h1 data-i18n-html="hero-title">Stop losing tabs.<br />Work by context.</h1>
+          <p class="hero-copy" data-i18n="hero-copy">
+            Pin Context helps you organize pinned files into a fast, keyboard-first workflow with
+            dedicated contexts, timeline history, and predictable behavior in large codebases.
           </p>
           <div class="hero-cta">
-            <a class="button" href="https://marketplace.visualstudio.com/search?term=pin%20manager&target=VSCode">Install in VS Code</a>
-            <a class="button button--ghost" href="https://github.com/borisalex-in/pin-context">View Source</a>
+            <a
+              class="button"
+              href="https://marketplace.visualstudio.com/search?term=pin%20context&target=VSCode"
+              data-i18n="install-btn"
+              >Install in VS Code</a
+            >
+            <a
+              class="button button--ghost"
+              href="https://github.com/borisalex-in/pin-context"
+              data-i18n="source-btn"
+              >View Source</a
+            >
           </div>
           <div class="hero-meta">
             <span>TypeScript</span>
@@ -51,72 +132,112 @@
         </section>
 
         <section id="features" class="section">
-          <h2>Core capabilities</h2>
+          <h2 data-i18n="features-title">Core capabilities</h2>
           <div class="grid grid--features">
             <article class="card">
-              <h3>Fast pin operations</h3>
-              <p>Pin, unpin, toggle current editor, bulk pin all tabs, and use glob-based pinning.</p>
+              <h3 data-i18n="feature-1-title">High-speed pin actions</h3>
+              <p data-i18n="feature-1-desc">
+                Pin, unpin, and toggle the active editor, pin all open tabs, or pin by glob
+                patterns.
+              </p>
             </article>
             <article class="card">
-              <h3>Workflow contexts</h3>
-              <p>Create task-focused contexts and switch between them without losing your working set.</p>
+              <h3 data-i18n="feature-2-title">Task-oriented contexts</h3>
+              <p data-i18n="feature-2-desc">
+                Create named contexts for each task and switch between them without rebuilding your
+                workspace state.
+              </p>
             </article>
             <article class="card">
-              <h3>Quick access UX</h3>
-              <p>Use quick picks, command palette actions, and fuzzy search for pinned files.</p>
+              <h3 data-i18n="feature-3-title">Keyboard-first access</h3>
+              <p data-i18n="feature-3-desc">
+                Use quick picks, command palette actions, and fuzzy search to navigate pinned files
+                in seconds.
+              </p>
             </article>
             <article class="card">
-              <h3>Context timeline</h3>
-              <p>Jump back to recently used contexts grouped by time buckets.</p>
+              <h3 data-i18n="feature-4-title">Context timeline</h3>
+              <p data-i18n="feature-4-desc">
+                Return to recently used contexts from a structured timeline grouped by day.
+              </p>
             </article>
             <article class="card">
-              <h3>Dedicated sidebar</h3>
-              <p>Work with active context, all contexts, recent timeline, and pinned files in one place.</p>
+              <h3 data-i18n="feature-5-title">Unified sidebar</h3>
+              <p data-i18n="feature-5-desc">
+                Manage active context, all contexts, recent history, and pinned files from one
+                dedicated view.
+              </p>
             </article>
             <article class="card">
-              <h3>Scales with projects</h3>
-              <p>Batching and configurable limits keep interaction responsive in large workspaces.</p>
+              <h3 data-i18n="feature-6-title">Built for large projects</h3>
+              <p data-i18n="feature-6-desc">
+                Batching, limits, and smart updates keep the extension responsive at scale.
+              </p>
             </article>
           </div>
         </section>
 
         <section id="commands" class="section">
-          <h2>Popular commands</h2>
+          <h2 data-i18n="commands-title">Default shortcuts</h2>
+          <div class="os-switch" role="group" aria-label="Platform switcher">
+            <button
+              class="os-btn active"
+              type="button"
+              data-os="mac"
+              aria-pressed="true"
+              data-i18n="commands-os-macos"
+            >
+              macOS
+            </button>
+            <button
+              class="os-btn"
+              type="button"
+              data-os="win"
+              aria-pressed="false"
+              data-i18n="commands-os-win"
+            >
+              Windows/Linux
+            </button>
+          </div>
           <div class="grid grid--commands">
             <article class="command-card">
-              <p class="command-title">Pin Current Editor</p>
-              <p class="command-desc">Pin the active tab instantly.</p>
-              <code>Ctrl + Cmd + K</code>
+              <p class="command-title" data-i18n="cmd-1-title">Pin Current Editor</p>
+              <p class="command-desc" data-i18n="cmd-1-desc">Pin the active tab.</p>
+              <code data-shortcut="pin">Cmd + Option + K</code>
             </article>
             <article class="command-card">
-              <p class="command-title">Unpin Current Editor</p>
-              <p class="command-desc">Remove pin from active tab.</p>
-              <code>Ctrl + Cmd + U</code>
+              <p class="command-title" data-i18n="cmd-2-title">Unpin Current Editor</p>
+              <p class="command-desc" data-i18n="cmd-2-desc">Remove the pin from the active tab.</p>
+              <code data-shortcut="unpin">Cmd + Option + L</code>
             </article>
             <article class="command-card">
-              <p class="command-title">Toggle Pin Current Editor</p>
-              <p class="command-desc">Switch pin state in one shortcut.</p>
-              <code>Alt + Cmd + K</code>
+              <p class="command-title" data-i18n="cmd-3-title">Toggle Pin Current Editor</p>
+              <p class="command-desc" data-i18n="cmd-3-desc">Toggle pin state with one shortcut.</p>
+              <code data-shortcut="toggle">Cmd + Option + J</code>
             </article>
           </div>
         </section>
 
         <section id="workflow" class="section section--workflow">
-          <h2>Typical workflow</h2>
+          <h2 data-i18n="workflow-title">Typical workflow</h2>
           <ol class="steps">
-            <li>Pin files related to your current task.</li>
-            <li>Create a context and give it a clear name.</li>
-            <li>Switch contexts as you move between tasks.</li>
-            <li>Use timeline to jump back to recent work.</li>
-            <li>Quick-open pinned files with fuzzy search.</li>
+            <li data-i18n="step-1">Pin files related to your current task.</li>
+            <li data-i18n="step-2">Create a context with a clear, descriptive name.</li>
+            <li data-i18n="step-3">Switch contexts as you move between tasks.</li>
+            <li data-i18n="step-4">Use timeline history to return to recent work quickly.</li>
+            <li data-i18n="step-5">Open pinned files instantly via fuzzy quick open.</li>
           </ol>
         </section>
       </main>
 
       <footer class="footer">
-        <p>Built for focused coding workflows in VS Code.</p>
-        <a href="https://github.com/borisalex-in/pin-context">github.com/borisalex-in/pin-context</a>
+        <p data-i18n="footer-text">Built for focused, high-velocity workflows in VS Code.</p>
+        <a href="https://github.com/borisalex-in/pin-context"
+          >github.com/borisalex-in/pin-context</a
+        >
       </footer>
     </div>
+
+    <script src="script.js" defer></script>
   </body>
 </html>
