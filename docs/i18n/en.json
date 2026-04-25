@@ -1,40 +1,84 @@
 {
   "nav-features": "Features",
-  "nav-commands": "Commands",
+  "nav-why": "Why it’s better",
+  "nav-commands": "Shortcuts",
   "nav-workflow": "Workflow",
   "github-btn": "GitHub",
+
   "hero-eyebrow": "VS CODE EXTENSION",
-  "hero-title": "Stop losing tabs.<br />Work by context.",
-  "hero-copy": "Pin Context helps you organize pinned files into a fast, keyboard-first workflow with dedicated contexts, timeline history, and predictable behavior in large codebases.",
-  "install-btn": "Install in VS Code",
-  "source-btn": "View Source",
-  "features-title": "Core capabilities",
-  "feature-1-title": "High-speed pin actions",
-  "feature-1-desc": "Pin, unpin, and toggle the active editor, pin all open tabs, or pin by glob patterns.",
-  "feature-2-title": "Task-oriented contexts",
-  "feature-2-desc": "Create named contexts for each task and switch between them without rebuilding your workspace state.",
-  "feature-3-title": "Keyboard-first access",
-  "feature-3-desc": "Use quick picks, command palette actions, and fuzzy search to navigate pinned files in seconds.",
-  "feature-4-title": "Context timeline",
-  "feature-4-desc": "Return to recently used contexts from a structured timeline grouped by day.",
-  "feature-5-title": "Unified sidebar",
-  "feature-5-desc": "Manage active context, all contexts, recent history, and pinned files from one dedicated view.",
-  "feature-6-title": "Built for large projects",
-  "feature-6-desc": "Batching, limits, and smart updates keep the extension responsive at scale.",
+
+  "hero-title": "Your workspace.<br />Finally under control.",
+
+  "hero-copy": "Pin Context turns chaotic tabs into structured workflows. Group files into contexts, switch instantly, and navigate large codebases without losing focus.",
+
+  "install-btn": "Install Extension",
+  "source-btn": "View on GitHub",
+
+  "features-title": "Built for real development workflows",
+
+  "feature-1-title": "Instant pin control",
+  "feature-1-desc": "Pin, unpin, and manage tabs in milliseconds — individually, in bulk, or by pattern.",
+
+  "feature-2-title": "Work by context",
+  "feature-2-desc": "Group files by task, feature, or flow. Save once — restore anytime.",
+
+  "feature-3-title": "Keyboard-first speed",
+  "feature-3-desc": "Everything is accessible via shortcuts and quick commands. No mouse required.",
+
+  "feature-4-title": "Timeline history",
+  "feature-4-desc": "Jump back to what you worked on yesterday or minutes ago — instantly.",
+
+  "feature-5-title": "One unified view",
+  "feature-5-desc": "Contexts, pins, and history — all in one place, always in sync.",
+
+  "feature-6-title": "Handles real scale",
+  "feature-6-desc": "Optimized for large projects with thousands of files and complex workflows.",
+
   "commands-title": "Default shortcuts",
   "commands-os-macos": "macOS",
-  "commands-os-win": "Windows/Linux",
-  "cmd-1-title": "Pin Current Editor",
-  "cmd-1-desc": "Pin the active tab.",
-  "cmd-2-title": "Unpin Current Editor",
-  "cmd-2-desc": "Remove the pin from the active tab.",
-  "cmd-3-title": "Toggle Pin Current Editor",
-  "cmd-3-desc": "Toggle pin state with one shortcut.",
-  "workflow-title": "Typical workflow",
+  "commands-os-win": "Windows / Linux",
+
+  "cmd-1-title": "Pin current file",
+  "cmd-1-desc": "Add active file to pinned set.",
+
+  "cmd-2-title": "Unpin current file",
+  "cmd-2-desc": "Remove file from pinned set.",
+
+  "cmd-3-title": "Toggle pin",
+  "cmd-3-desc": "Quick toggle without context switching.",
+
+  "cmd-4-title": "Switch context",
+  "cmd-4-desc": "Move between workflows instantly.",
+
+  "workflow-title": "How it works",
+
   "step-1": "Pin files related to your current task.",
-  "step-2": "Create a context with a clear, descriptive name.",
-  "step-3": "Switch contexts as you move between tasks.",
-  "step-4": "Use timeline history to return to recent work quickly.",
-  "step-5": "Open pinned files instantly via fuzzy quick open.",
-  "footer-text": "Built for focused, high-velocity workflows in VS Code."
+  "step-2": "Save them as a context.",
+  "step-3": "Switch contexts when changing tasks.",
+  "step-4": "Use timeline to restore recent work.",
+  "step-5": "Navigate everything via keyboard.",
+
+  "footer-text": "Built for developers who move fast.",
+
+  "support-btn": "Support",
+  "support-title": "Support the Project",
+  "support-subtitle": "Help keep development active and evolving.",
+
+  "wallet-info-btc": "send only via Bitcoin network",
+  "wallet-info-eth": "send only via Ethereum / ERC20 network",
+  "wallet-info-trc": "send only via Tron network",
+  "wallet-info-sol": "send only via Solana network",
+
+  "comparison-title": "Why Pin Context?",
+  "cmp-vscode-1": "Pinned tabs mix across tasks",
+  "cmp-vscode-2": "Manual tab management",
+  "cmp-vscode-3": "No task separation",
+  "cmp-vscode-4": "No history of contexts",
+  "cmp-vscode-5": "Limited keyboard workflow",
+
+  "cmp-pin-1": "Separate contexts per task",
+  "cmp-pin-2": "Instant context switching",
+  "cmp-pin-3": "Timeline with history",
+  "cmp-pin-4": "Keyboard-first navigation",
+  "cmp-pin-5": "Built for large projects"
 }

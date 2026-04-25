@@ -5,14 +5,16 @@ const richTextKeys = new Set(['hero-title']);
 const translationCache = new Map();
 const shortcutSets = {
   mac: {
-    pin: 'Cmd + Option + K',
-    unpin: 'Cmd + Option + L',
-    toggle: 'Cmd + Option + J'
+    pin: 'Command + Option + K',
+    unpin: 'Command + Option + L',
+    toggle: 'Command + Option + J',
+    switch: 'Command + Option + P'
   },
   win: {
     pin: 'Ctrl + Shift + K',
     unpin: 'Ctrl + Shift + L',
-    toggle: 'Ctrl + Shift + J'
+    toggle: 'Ctrl + Shift + J',
+    switch: 'Ctrl + Shift + P'
   }
 };
 
@@ -130,4 +132,92 @@ document.addEventListener('DOMContentLoaded', () => {
 
   applyShortcuts(resolvePlatform());
   void setLanguage(resolveLanguage());
+});
+
+document.querySelectorAll('.copy-btn').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    const wallet = btn.previousElementSibling.dataset.wallet;
+
+    queueMicrotask(() => {
+      navigator.clipboard.writeText(wallet);
+      btn.classList.add('copied');
+    });
+  });
+
+  btn.addEventListener('animationend', () => {
+    btn.classList.remove('copied');
+  });
+});
+
+const burger = document.querySelector('.burger');
+const nav = document.querySelector('.nav');
+
+if (burger && nav) {
+  burger.addEventListener('click', () => {
+    nav.classList.toggle('open');
+  });
+}
+
+const buttons = document.querySelectorAll('.toggle-btn');
+const panels = document.querySelectorAll('.comparison-panel');
+
+if (buttons) {
+  buttons.forEach((btn) => {
+    btn.addEventListener('click', () => {
+      const target = btn.dataset.target;
+
+      buttons.forEach((b) => b.classList.remove('active'));
+      btn.classList.add('active');
+
+      panels.forEach((panel) => {
+        panel.classList.toggle('active', panel.dataset.panel === target);
+      });
+    });
+  });
+}
+
+const state = {
+  master: {
+    pins: ['index.html', 'script.js', 'styles.css'],
+    count: '3/21',
+    type: 'git'
+  },
+  git: {
+    pins: ['index.html', 'ru.json'],
+    count: '2/21'
+  },
+  manual: {
+    pins: ['en.json'],
+    count: '1/21',
+    type: 'git'
+  }
+};
+
+function setContext(mode) {
+  const data = state[mode];
+  if (!data) return;
+
+  const pins = document.getElementById('pins');
+  pins.innerHTML = data.pins.map((p) => `<div class="item active">${p}</div>`).join('');
+
+  document.getElementById('pinCount').textContent = `(${data.count})`;
+
+  document.querySelectorAll('[data-context]').forEach((el) => {
+    el.classList.toggle('active', el.dataset.context === mode);
+  });
+}
+
+setContext('master');
+
+document.querySelectorAll('[data-context]').forEach((el) => {
+  el.addEventListener('click', () => {
+    setContext(el.dataset.context);
+  });
+});
+
+document.querySelectorAll('.sidebar-section .title').forEach((title) => {
+  title.addEventListener('click', () => {
+    const section = title.closest('.sidebar-section');
+    section.classList.toggle('collapsed');
+  });
 });

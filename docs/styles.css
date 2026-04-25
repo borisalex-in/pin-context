@@ -24,6 +24,10 @@ body {
   min-height: 100%;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   font-family:
     Inter,
@@ -32,7 +36,6 @@ body {
     'Segoe UI',
     sans-serif;
   background:
-    radial-gradient(circle at 15% -10%, rgba(92, 180, 88, 0.28), transparent 32%),
     radial-gradient(circle at 85% 0%, rgba(74, 158, 70, 0.28), transparent 28%), var(--bg);
   color: var(--text);
   line-height: 1.55;
@@ -173,7 +176,7 @@ h1 {
   align-items: center;
   justify-content: center;
   border: 1px solid transparent;
-  border-radius: 11px;
+  border-radius: 10px;
   padding: 0.65rem 1.15rem;
   color: var(--bg);
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
@@ -187,6 +190,17 @@ h1 {
 .button:hover {
   transform: translateY(-1px);
   filter: brightness(1.08);
+}
+
+.button--icon {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.button--icon svg {
+  position: relative;
+  will-change: transform;
 }
 
 .button--ghost {
@@ -266,7 +280,7 @@ h2 {
 }
 
 .grid--commands {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
 }
 
 .os-switch {
@@ -308,6 +322,13 @@ h2 {
   background: var(--bg-soft);
   padding: 1rem;
   transition: border-color 0.2s;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.command-card code {
+  margin-top: auto;
 }
 
 .command-card:hover {
@@ -379,17 +400,374 @@ code {
   text-decoration: underline;
 }
 
+.section--support {
+  text-align: center;
+}
+
+.support-subtitle {
+  margin-top: 8px;
+  opacity: 0.7;
+}
+
+.support-grid {
+  margin-top: 32px;
+  display: grid;
+  gap: 16px;
+  grid-template-columns: repeat(auto-fit, minmax(440px, 1fr));
+}
+
+.support-card {
+  padding: 16px;
+  border-radius: 16px;
+  background: #17191c;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  text-align: left;
+  transition: 0.2s ease;
+}
+
+.support-card:hover {
+  border-color: #5cb458;
+  transform: translateY(-2px);
+}
+
+.support-card-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  font-size: 14px;
+}
+
+.support-info {
+  font-size: 12px;
+  opacity: 0.5;
+}
+
+.support-card-header img {
+  width: 20px;
+  height: 20px;
+}
+
+.wallet-row {
+  display: flex;
+  align-items: center;
+  background: #20252c;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.wallet {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  padding: 10px 12px;
+  background: transparent;
+  border: none;
+
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.copy-btn {
+  width: 40px;
+  height: 38px;
+  border: none;
+  background: transparent;
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  color: #aaa;
+  cursor: pointer;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  transition: 0.2s ease;
+}
+
+.copy-btn:hover {
+  color: #5cb458;
+  background: rgba(92, 180, 88, 0.1);
+}
+
+.copy-btn span {
+  position: absolute;
+  transition: 0.2s ease;
+  font-size: 14px;
+}
+
+.copy-icon {
+  opacity: 1;
+  transform: scale(1);
+  transition: 0.2s ease;
+}
+
+.copy-success {
+  opacity: 0;
+  transform: scale(0.6);
+  transition: 0.2s ease;
+}
+
+.copy-btn.copied .copy-icon {
+  opacity: 0;
+  transform: scale(0.6);
+}
+
+.copy-btn.copied .copy-success {
+  opacity: 1;
+  transform: scale(1);
+}
+
+.copy-btn.copied {
+  animation: copiedState 1s ease;
+}
+
+.card-icon {
+  width: 22px;
+  height: 22px;
+  margin-bottom: 10px;
+  color: var(--accent);
+  opacity: 0.9;
+  transition: 0.2s ease;
+}
+
+.card:hover .card-icon {
+  transform: translateY(-1px);
+  opacity: 1;
+}
+
+.section--comparison {
+  text-align: center;
+}
+
+.comparison-toggle {
+  display: inline-flex;
+  background: #17191c;
+  border-radius: 999px;
+  padding: 4px;
+  margin: 24px 0 40px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.toggle-btn {
+  border: none;
+  background: transparent;
+  color: #aaa;
+  padding: 10px 18px;
+  border-radius: 999px;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.25s ease;
+}
+
+.toggle-btn.active {
+  background: #5cb458;
+  color: #0f1115;
+  box-shadow: 0 4px 16px rgba(92, 180, 88, 0.35);
+}
+
+.comparison-content {
+  display: grid;
+  max-width: 640px;
+  margin: 0 auto;
+}
+
+.comparison-panel {
+  grid-area: 1 / 1;
+  opacity: 0;
+  transform: translateY(8px);
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.comparison-panel.active {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.comparison-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.comparison-list li {
+  background: #20252c;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 14px;
+  padding: 16px 18px;
+  margin-bottom: 12px;
+  text-align: left;
+  font-size: 15px;
+  color: #e6e6e6;
+
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.comparison-list li::before {
+  content: '✕';
+  color: #ff6b6b;
+  font-weight: 600;
+}
+
+[data-panel='pincontext'] .comparison-list li::before {
+  content: '✓';
+  color: #5cb458;
+}
+
+.hero {
+  position: relative;
+}
+
+.hero-sidebar-demo {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  max-height: calc(100% - 40px);
+  overflow-x: hidden;
+  width: 100%;
+  max-width: 300px;
+  background: #0f1629;
+  border: 1px solid #273451;
+  border-radius: 14px;
+  padding: 12px;
+  font-family: Inter;
+  user-select: none;
+}
+
+.hero-sidebar-demo * {
+  user-select: none;
+}
+
+.sidebar-section:not(:last-child) {
+  margin-bottom: 14px;
+}
+
+.title {
+  font-size: 12px;
+  color: #9ba7c2;
+  margin-bottom: 6px;
+  display: flex;
+  justify-content: space-between;
+}
+
+.items {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.item {
+  padding: 3px 8px;
+  font-size: 13px;
+  border-radius: 6px;
+  color: #cbd5e1;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.item-type {
+  opacity: 0.4;
+}
+
+.item.active::before {
+  content: '';
+  position: absolute;
+  left: -10px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: #5cb458;
+  border-radius: 2px;
+}
+
+.item:hover {
+  background: #1a2540;
+}
+
+.item.active {
+  background: #5cb458;
+  color: #0b0f14;
+  font-weight: 600;
+}
+
+.group-title {
+  font-size: 11px;
+  color: #6b7280;
+  margin: 6px 0;
+}
+
+.sidebar-section .items,
+.sidebar-section .group {
+  overflow: hidden;
+  max-height: 500px;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    max-height 280ms cubic-bezier(0.4, 0, 0.2, 1),
+    opacity 180ms ease,
+    transform 180ms ease;
+  will-change: max-height, opacity, transform;
+}
+
+.sidebar-section.collapsed .items,
+.sidebar-section.collapsed .group {
+  max-height: 0;
+  opacity: 0;
+  transform: translateY(-4px);
+  pointer-events: none;
+}
+
+.sidebar-section .title {
+  cursor: pointer;
+  user-select: none;
+}
+
+@keyframes copiedState {
+  0% {
+  }
+  80% {
+  }
+  100% {
+  }
+}
+
+@media (max-width: 1200px) {
+  .grid--commands {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .hero-sidebar-demo {
+    display: none;
+  }
+
+  .nav {
+    display: none;
+  }
+}
+
 @media (max-width: 980px) {
   .grid--features {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .grid--commands {
-    grid-template-columns: 1fr;
+  .support-grid {
+    grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
   }
 }
 
 @media (max-width: 720px) {
+  body {
+    background:
+      radial-gradient(circle at 105% 0%, rgba(74, 158, 70, 0.28), transparent 8%), var(--bg);
+  }
+
   .page {
     width: min(1120px, calc(100% - 1.5rem));
     padding-top: 0.9rem;
@@ -415,11 +793,54 @@ code {
     padding: 1.35rem;
   }
 
+  .grid--commands {
+    grid-template-columns: 1fr;
+  }
+
   .grid--features {
     grid-template-columns: 1fr;
   }
 
   .brand-dot {
     box-shadow: 0 0 16px var(--accent-glow);
+  }
+
+  .nav {
+    display: none;
+    width: 100%;
+    flex-direction: column;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+  }
+
+  .nav.open {
+    display: flex;
+  }
+
+  .support-grid {
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  }
+
+  .button--icon span {
+    display: none;
+  }
+
+  .button--small {
+    padding: 0.3rem 0.7rem;
+    min-height: 32px;
+  }
+
+  .lang-switch {
+    padding: 0;
+    border: 0;
+    border-radius: 10px;
+  }
+
+  .lang-btn {
+    display: inline-flex;
+    min-height: 32px;
+    align-items: center;
+    border-radius: 10px;
+    padding: 0.3rem 0.68rem;
   }
 }

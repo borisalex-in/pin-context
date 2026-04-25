@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
 import { ContextStore } from './contextStore';
-import { ContextTimelineEntry, PinContext } from './contextTypes';
+import { ContextTimelineEntry, PinContext } from './types';
 import { PinStore } from './pinStore';
 import { PinRecord } from './tabUtils';
 
@@ -213,14 +213,10 @@ class PinnedTreeDragAndDropController implements vscode.TreeDragAndDropControlle
               if (uri.scheme === 'file') {
                 uriSet.set(uri.toString(), uri);
               }
-            } catch {
-              // Ignore malformed URI payloads.
-            }
+            } catch {}
           }
         }
-      } catch {
-        // Ignore malformed transfer payloads.
-      }
+      } catch {}
     }
 
     const explorerTree = dataTransfer.get('application/vnd.code.tree.explorer');
@@ -327,9 +323,7 @@ class PinnedTreeDragAndDropController implements vscode.TreeDragAndDropControlle
       if (typeof candidate === 'string') {
         try {
           uris.push(vscode.Uri.parse(candidate));
-        } catch {
-          // Ignore unknown string payloads.
-        }
+        } catch {}
         return;
       }
 
@@ -349,9 +343,7 @@ class PinnedTreeDragAndDropController implements vscode.TreeDragAndDropControlle
         if (typeof record.fsPath === 'string') {
           try {
             uris.push(vscode.Uri.file(record.fsPath));
-          } catch {
-            // Ignore malformed fsPath payloads.
-          }
+          } catch {}
         }
         Object.values(record).forEach((item) => visit(item));
       }
@@ -376,7 +368,6 @@ export class PinnedTreeViewProvider
   private readonly contextDisposable: vscode.Disposable;
   private folderCache = new Map<string, PinRecord[]>();
   private readonly pinnedFilesSection = new ContextSectionItem('Pinned Files', 'pinnedFiles');
-  private readonly activeContextSection = new ContextSectionItem('Active Context', 'active');
   private readonly contextsSection = new ContextSectionItem('Contexts', 'contexts');
   private readonly timelineSection = new ContextSectionItem('Recent Contexts', 'timeline');
   readonly dragAndDropController: vscode.TreeDragAndDropController<vscode.TreeItem>;
@@ -428,22 +419,10 @@ export class PinnedTreeViewProvider
 
   async getChildren(element?: vscode.TreeItem): Promise<vscode.TreeItem[]> {
     if (!element) {
-      return [
-        this.activeContextSection,
-        this.contextsSection,
-        this.timelineSection,
-        this.pinnedFilesSection
-      ];
+      return [this.pinnedFilesSection, this.contextsSection, this.timelineSection];
     }
 
     if (element instanceof ContextSectionItem) {
-      if (element.section === 'active') {
-        const active = this.contextStore.getActiveContext();
-        return active
-          ? [new ContextItem(active, true)]
-          : [new vscode.TreeItem('No active context', vscode.TreeItemCollapsibleState.None)];
-      }
-
       if (element.section === 'contexts') {
         const activeId = this.contextStore.getActiveContext()?.id;
         return this.contextStore

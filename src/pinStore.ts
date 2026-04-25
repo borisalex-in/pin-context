@@ -3,7 +3,6 @@ import { minimatch } from 'minimatch';
 import { PinRecord, getPrimaryTabUri, toPinRecord, toUriKey } from './tabUtils';
 
 const PERSISTED_PINS_KEY = 'pin-context.pinnedUris';
-const TAB_REFRESH_DEBOUNCE_MS = 100;
 const DEFAULT_BATCH_SIZE = 8;
 const DEFAULT_FIND_FILES_LIMIT = 2000;
 const DEFAULT_RESTORE_REOPEN_LIMIT = 50;
@@ -23,7 +22,7 @@ export class PinStore implements vscode.Disposable {
   readonly onDidChange = this.onDidChangeEmitter.event;
 
   private readonly tabChangeDisposable: vscode.Disposable;
-  private refreshTimer: NodeJS.Timeout | undefined;
+  private refreshScheduled = false;
   private batchQueue: Promise<void> = Promise.resolve();
   private focusCommandQueue: Promise<void> = Promise.resolve();
   private applyingState = false;
@@ -44,9 +43,6 @@ export class PinStore implements vscode.Disposable {
   }
 
   dispose(): void {
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
-    }
     this.tabChangeDisposable.dispose();
     this.onDidChangeEmitter.dispose();
   }
@@ -171,13 +167,17 @@ export class PinStore implements vscode.Disposable {
       this.refreshRequestedWhileApplying = true;
       return;
     }
-    if (this.refreshTimer) {
-      clearTimeout(this.refreshTimer);
+
+    if (this.refreshScheduled) {
+      return;
     }
-    this.refreshTimer = setTimeout(() => {
-      this.refreshTimer = undefined;
+
+    this.refreshScheduled = true;
+
+    queueMicrotask(() => {
+      this.refreshScheduled = false;
       this.refreshFromTabs();
-    }, TAB_REFRESH_DEBOUNCE_MS);
+    });
   }
 
   private refreshFromTabs(forceEmit = false): void {

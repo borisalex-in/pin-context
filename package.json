@@ -2,7 +2,7 @@
   "name": "pin-context",
   "displayName": "Pin Context",
   "description": "Advanced pin management for VS Code editors with keyboard shortcuts",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "publisher": "borisalex-in",
   "icon": "images/icon.png",
   "author": {
@@ -24,13 +24,15 @@
     "format:check": "prettier --check \"**/*.{ts,js,json,md,css,html,yml,yaml}\"",
     "precommit:check": "npm run format:check && npm run lint && npm run compile",
     "prepare": "husky",
-    "release:patch": "npm version patch -m \"release: %s\" && npm run build:vsix && git push --follow-tags",
-    "release:minor": "npm version minor -m \"release: %s\" && npm run build:vsix && git push --follow-tags",
-    "release:major": "npm version major -m \"release: %s\" && npm run build:vsix && git push --follow-tags",
-    "hotfix:patch": "npm version patch -m \"hotfix: %s\" && npm run build:vsix && git push --follow-tags",
+    "version": "node scripts/update-readme-version.js",
+    "postversion": "git add -A && git commit && git tag v$(node -p \"require('./package.json').version\") && git push --follow-tags",
+    "release:patch": "npm run precommit:check && npm run build:vsix && npm version patch --no-git-tag-version",
+    "release:minor": "npm run precommit:check && npm run build:vsix && npm version minor --no-git-tag-version",
+    "release:major": "npm run precommit:check && npm run build:vsix && npm version major --no-git-tag-version",
+    "hotfix:patch": "npm run precommit:check && npm run build:vsix && npm version patch --no-git-tag-version",
     "build": "npm run compile",
     "build:vsix": "npm run compile && vsce package",
-    "publish": "npm run compile && npm run build:vsix && npm run unpublish && code --install-extension pin-context-$(npm run version --silent).vsix",
+    "publish": "npm run compile && npm run build:vsix && code --install-extension pin-context-$(node -p \"require('./package.json').version\").vsix",
     "publish:vsix": "vsce publish",
     "publish:release": "npm run release:patch && npm run publish:vsix",
     "clean": "rm -rf out *.vsix",
@@ -224,6 +226,11 @@
         "key": "ctrl+shift+j",
         "mac": "cmd+alt+j",
         "when": "editorTextFocus"
+      },
+      {
+        "command": "pin-context.switchContext",
+        "key": "ctrl+shift+p",
+        "mac": "cmd+alt+p"
       }
     ],
     "menus": {

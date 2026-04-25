@@ -28,6 +28,31 @@ export async function activate(context: vscode.ExtensionContext) {
     showCollapseAll: true,
     canSelectMany: true
   });
+
+  const updateTreeViewTitle = () => {
+    const activeContext = contextStore.getActiveContext();
+    if (activeContext) {
+      treeView.title = `📌 Pinned Files (${activeContext.name})`;
+    } else {
+      treeView.title = '📌 Pinned Files';
+    }
+  };
+
+  updateTreeViewTitle();
+
+  context.subscriptions.push(
+    contextStore.onDidChange(() => {
+      pinnedTreeProvider.refresh();
+      updateTreeViewTitle();
+    })
+  );
+
+  context.subscriptions.push(
+    pinStore.onDidChange(() => {
+      updateTreeViewTitle();
+    })
+  );
+
   context.subscriptions.push(treeView, pinStore, contextStore, statusBar, {
     dispose: () => pinnedTreeProvider.dispose()
   });

@@ -1,9 +1,10 @@
 # Pin Context for VS Code
 
-[![Version](https://img.shields.io/badge/version-0.0.1-blue.svg)](https://github.com/borisalex-in/pin-context)
+[![Version](https://img.shields.io/badge/version-0.0.3-blue.svg)](https://github.com/borisalex-in/pin-context)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85.0-007ACC)](https://code.visualstudio.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6)](https://www.typescriptlang.org/)
+[![Support](https://img.shields.io/badge/Support-Crypto-FF9900?logo=bitcoin&logoColor=white)](#-support-the-project)
 
 Pin Context turns pinned tabs into a fast workflow/navigation system for VS Code.
 
@@ -27,6 +28,7 @@ Pin Context turns pinned tabs into a fast workflow/navigation system for VS Code
 | Pin Current Editor   | `Cmd + Option + K` | `Ctrl + Shift + K` |
 | Unpin Current Editor | `Cmd + Option + L` | `Ctrl + Shift + L` |
 | Toggle Pin           | `Cmd + Option + J` | `Ctrl + Shift + J` |
+| Switch Context       | `Cmd + Option + P` | `Ctrl + Shift + P` |
 
 > **Windows/Linux users:** Open Keyboard Shortcuts (`Ctrl+K Ctrl+S`) and search for `pin-context` to customize.
 
@@ -220,3 +222,29 @@ Before each commit, Husky runs:
 1. `npm run format:check`
 2. `npm run lint`
 3. `npm run compile`
+
+## 💰 Support the Project
+
+> Your support helps keep the project actively maintained and improved.
+
+<p align="left">
+  <img src="./images/icon-btc.png" width="18"/> 
+  <b>BTC:</b> 
+  <code>bc1qvcm9x9prgn7njvxzktmwg0jn8rv9vjm6azus63</code><br/>
+  <span style="opacity:0.7;">(send only via Bitcoin network)</span><br/>
+
+  <img src="./images/icon-eth.png" width="18"/> 
+  <b>ETH / USDT (ERC20):</b> 
+  <code>0xA3fca703Edd9c2A77941De2c8A13ED97778a3eBE</code><br/>
+  <span style="opacity:0.7;">(send only via Ethereum / ERC20 network)</span><br/><br/>
+
+  <img src="./images/icon-trc.png" width="18"/> 
+  <b>Tron / USDT (TRC20):</b> 
+  <code>TM1Dcp4BP9PVYP7HwvQGCSGVCQLorHPdzK</code><br/>
+  <span style="opacity:0.7;">(send only via Tron network)</span><br/><br/>
+
+  <img src="./images/icon-sol.png" width="18"/> 
+  <b>SOL / USDT (Solana):</b> 
+  <code>22kVADbujhQTfptSARSbLqa8UZfozgEPMsjmuh2gNHLc</code><br/>
+  <span style="opacity:0.7;">(send only via Solana network)</span>
+</p>
