@@ -2,7 +2,7 @@
   "name": "pin-context",
   "displayName": "Pin Context",
   "description": "Advanced context and pin management for VS Code with instant keyboard navigation",
-  "version": "0.0.4",
+  "version": "0.0.5",
   "publisher": "borisalex-in",
   "icon": "images/icon.png",
   "author": {
@@ -95,7 +95,7 @@
       "explorer": [
         {
           "id": "pin-context.pinnedView",
-          "name": "Pinned Files"
+          "name": "Pin Context"
         }
       ]
     },
@@ -403,7 +403,7 @@
         },
         "pin-context.contexts.autoGitContexts": {
           "type": "boolean",
-          "default": false,
+          "default": true,
           "description": "Automatically maintain git-aware contexts per branch"
         },
         "pin-context.contexts.restoreLastContext": {

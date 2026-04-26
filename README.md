@@ -1,42 +1,65 @@
 # Pin Context for VS Code
 
-[![Version](https://img.shields.io/badge/version-0.0.4-blue.svg)](https://github.com/borisalex-in/pin-context)
+[![Version](https://img.shields.io/badge/version-0.0.5-blue.svg)](https://github.com/borisalex-in/pin-context)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85.0-007ACC)](https://code.visualstudio.com/)
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6)](https://www.typescriptlang.org/)
 [![Support](https://img.shields.io/badge/Support-Crypto-FF9900?logo=bitcoin&logoColor=white)](#-support-the-project)
 
-Pin Context turns pinned tabs into a fast workflow/navigation system for VS Code.
+Pin Context helps developers switch tasks without losing focus: save pinned tabs as contexts, restore them instantly, and keep branch-based workflows organized automatically.
 
-## 🚀 Quick Start (1 minute)
+## 💡 Why Developers Use It
 
-1. Open a few files and pin them (`Pin Current Editor`).
+- ⚡ **Switch tasks fast**: jump from feature work to bugfix or review and restore the right files in one action.
+- 🧹 **Reduce tab chaos**: keep each task in a clean, named context instead of one giant mixed tab set.
+- 🌿 **Stay in flow with git**: branch contexts are enabled by default, so context changes follow your branch changes.
+- 🕘 **Recover your rhythm**: timeline history helps you return to what you worked on recently.
+- ⌨️ **Work keyboard-first**: core actions are optimized for command palette and shortcuts.
+
+## 🧩 What You Get
+
+- 🔖 Pin/unpin/toggle current editor, pin all, unpin all, pin by pattern.
+- 🗂️ Manual contexts: create, switch, rename, delete.
+- 🌿 Git contexts: auto-maintained per branch (**enabled by default**).
+- 🕘 Context timeline (`Today`, `Yesterday`, `Older`).
+- 📁 Sidebar workflow: pinned files + contexts + recent contexts.
+- 🖱️ Drag-and-drop from Explorer into pinned view.
+- 🎯 First-run onboarding, contextual empty states, and lightweight nudges.
+
+## 🚀 Quick Start (1 Minute)
+
+1. Open and pin a few files.
 2. Run `Pin Context: Create Context`.
-3. Switch using `Pin Context: Switch Context` and watch tabs restore instantly.
+3. Run `Pin Context: Switch Context`.
+4. Create/switch git branch and observe branch-aware contexts.
 
-On first run, Pin Context now shows a compact onboarding message with actions:
+## 🧠 Typical Developer Scenarios
 
-- `Create Context`
-- `Open Commands`
-- `Quick Demo`
+- 🚀 **Feature development**: keep frontend, backend, and tests in one context per feature.
+- 🔍 **PR review**: save review tabs and return later exactly where you stopped.
+- 🚨 **Incident/debug mode**: isolate logs, diagnostics, and hotfix files in a dedicated context.
+- 🧱 **Multi-repo workspace**: keep branch/task context predictable across folders.
 
-## ✨ Features
+---
 
-- 🔖 **Fast pinning operations**: pin/unpin/toggle current editor, pin all, unpin all, pin by glob.
-- 🗂️ **Workflow contexts**: create, switch, rename, delete manual contexts for task-based navigation.
-- 🌿 **Optional git-aware contexts**: branch contexts are supported but disabled by default.
-- ⚡ **Quick access UX**: command palette + fuzzy quick picks for contexts, timeline, and pinned files.
-- 🕘 **Context timeline**: jump back to recently used contexts (`Today`, `Yesterday`, `Older`).
-- 📁 **Dedicated sidebar**: sections for active context, contexts, recent contexts, and pinned files.
-- 🖱️ **Drag and drop pinning**: drag files into `Pinned Files` to pin instantly and sync active context.
-- 🚀 **Scalable behavior**: batching, debounce, caching, and progress reporting for large tab sets.
-- 💾 **Configurable persistence**: choose global or workspace scope for pins and contexts.
-- 📊 **Status bar integration**: live pinned count with low-noise updates.
-- 🎯 **Onboarding + empty states**: first-run CTA, contextual sidebar hints, and guided nudges.
-- 🧱 **More robust internals**: operation queue, safer context synchronization, and error-handled persistence.
-- 🔋 **Smarter git polling**: lazy/visibility-aware polling with adaptive intervals (active vs idle).
+## Commands
 
-## ⌨️ Keyboard Shortcuts (Default)
+- `Pin Context: Pin Current Editor`
+- `Pin Context: Unpin Current Editor`
+- `Pin Context: Toggle Pin Current Editor`
+- `Pin Context: Pin All Opened Editors`
+- `Pin Context: Unpin All Editors`
+- `Pin Context: Pin Editors by Pattern`
+- `Pin Context: Create Context`
+- `Pin Context: Switch Context`
+- `Pin Context: Rename Context`
+- `Pin Context: Delete Context`
+- `Pin Context: Save Current Pins to Context`
+- `Pin Context: Open Context Timeline`
+- `Pin Context: Quick Open Pinned File`
+- `Pin Context: Refresh Pinned Files View`
+- `Pin Context: Toggle View Mode (Tree/List)`
+
+## Default Shortcuts
 
 | Action               | macOS              | Windows/Linux      |
 | -------------------- | ------------------ | ------------------ |
@@ -45,212 +68,38 @@ On first run, Pin Context now shows a compact onboarding message with actions:
 | Toggle Pin           | `Cmd + Option + J` | `Ctrl + Shift + J` |
 | Switch Context       | `Cmd + Option + P` | `Ctrl + Shift + P` |
 
-> **Windows/Linux users:** Open Keyboard Shortcuts (`Ctrl+K Ctrl+S`) and search for `pin-context` to customize.
+## Main Settings
 
-## 🧭 Commands
+### Core
 
-Open Command Palette (`Cmd+Shift+P`) and type `Pin Context`:
-
-| Command                                     | Description                                    |
-| ------------------------------------------- | ---------------------------------------------- |
-| `Pin Context: Pin Current Editor`           | Pin the active editor tab                      |
-| `Pin Context: Unpin Current Editor`         | Unpin the active editor tab                    |
-| `Pin Context: Toggle Pin Current Editor`    | Toggle pin state                               |
-| `Pin Context: Pin All Opened Editors`       | Pin every open editor                          |
-| `Pin Context: Unpin All Editors`            | Unpin all pinned editors                       |
-| `Pin Context: Pin Editors by Pattern`       | Pin editors matching glob pattern              |
-| `Pin Context: Toggle View Mode`             | Switch between Tree and List view              |
-| `Pin Context: Refresh Pinned Files View`    | Manually refresh the sidebar                   |
-| `Pin Context: Create Context`               | Create a named pin context                     |
-| `Pin Context: Switch Context`               | Fuzzy-switch between contexts                  |
-| `Pin Context: Rename Context`               | Rename an existing manual context              |
-| `Pin Context: Delete Context`               | Delete a manual context                        |
-| `Pin Context: Save Current Pins to Context` | Persist current pinned set into active context |
-| `Pin Context: Open Context Timeline`        | Open recent context history                    |
-| `Pin Context: Quick Open Pinned File`       | Keyboard-first search across pinned files      |
-
-## 🗃️ Sidebar Sections
-
-Pin Context contributes a `Pinned Files` view in Explorer with structured sections:
-
-- **Active Context**: currently selected context (if any).
-- **Contexts**: manual and git contexts (git optional).
-- **Recent Contexts**: timeline grouped by day buckets.
-- **Pinned Files**: pinned file list in tree or flat mode.
-
-## 🧩 Workflow Contexts
-
-Contexts are named snapshots of your pinned working set:
-
-- **Manual context flow**:
-  1. Pin files for a task.
-  2. Run `Create Context`.
-  3. Later run `Switch Context` to restore that working set.
-- **Context management**:
-  - Rename and delete are available via commands and sidebar toolbar actions.
-- **Sync behavior**:
-  - When a manual context is active, pin/unpin changes are synchronized to it.
-- **Git contexts**:
-  - Optional feature; disabled by default via `pin-context.contexts.autoGitContexts`.
-
-## 🧭 Onboarding Experience
-
-Pin Context includes lightweight onboarding to reduce time-to-value:
-
-- **First launch CTA**: start with `Create Context`, open commands, or run a quick demo prompt.
-- **Contextual empty states** in sidebar:
-  - No pinned files -> pin current editor.
-  - No contexts yet -> create first context.
-  - Pinned files exist but no contexts -> save pinned setup as a context.
-- **Behavior reinforcement**:
-  - After first context creation: prompt to switch and see context restore in action.
-  - After early context switches: one-time usage nudge.
-
-## 🛠️ Sidebar Menu
-
-In the `Pinned Files` view:
-
-- **Toolbar actions**:
-  - `Refresh Pinned Files View`
-  - `Toggle View Mode (Tree/List)`
-  - `Switch Context`
-  - `Quick Open Pinned File`
-  - `Create Context`
-  - `Rename Context`
-  - `Delete Context`
-- **File context menu** (`right-click` on pinned file):
-  - `Unpin`
-  - `Reveal in Explorer`
-  - `Copy Path`
-
-## ⚙️ Settings
-
-### Core Pinning
-
-- `pin-context.viewMode`: `tree` or `list`.
-- `pin-context.confirmBeforeUnpinAll`: ask before unpinning everything.
-- `pin-context.showPinnedCountInStatusBar`: show/hide status bar counter.
-- `pin-context.persistenceScope`: where pinned files are stored (`globalState`/`workspaceState`).
-- `pin-context.restoreBehavior`: `keepInTree` or `reopenAndPin`.
-- `pin-context.restoreReopenLimit`: max tabs reopened when restore mode is `reopenAndPin`.
-
-### Performance
-
-- `pin-context.batchSize`: operation chunk size for pin/unpin.
-- `pin-context.findFilesMaxResults`: limit for workspace glob search.
-- `pin-context.debug`: enable debug logs.
+- `pin-context.viewMode`: `tree` or `list`
+- `pin-context.confirmBeforeUnpinAll`: ask before unpinning all
+- `pin-context.persistenceScope`: `globalState` or `workspaceState`
+- `pin-context.restoreBehavior`: `keepInTree` or `reopenAndPin`
+- `pin-context.restoreReopenLimit`: reopen limit for `reopenAndPin`
 
 ### Contexts
 
-- `pin-context.contexts.autoGitContexts` (default: `false`): enable branch contexts.
-- `pin-context.contexts.restoreLastContext` (default: `false`): restore last active context on startup.
-- `pin-context.contexts.timelineEnabled`: enable context timeline entries.
-- `pin-context.contexts.maxTimelineEntries`: timeline retention limit.
-- `pin-context.contexts.persistenceScope`: context storage scope (`globalState`/`workspaceState`).
-- `pin-context.contexts.autoSwitchOnGitBranchChange` (default: `true`): switch to matching git context on branch change.
+- `pin-context.contexts.autoGitContexts` (**default: `true`**)
+- `pin-context.contexts.autoSwitchOnGitBranchChange` (default: `true`)
+- `pin-context.contexts.restoreLastContext` (default: `false`)
+- `pin-context.contexts.timelineEnabled` (default: `true`)
+- `pin-context.contexts.maxTimelineEntries` (default: `100`)
+- `pin-context.contexts.persistenceScope`: `globalState` or `workspaceState`
 
-## 🧪 Typical Workflow
+### Performance
 
-1. Pin files related to a task.
-2. Create a context (`Create Context`).
-3. Switch tasks via `Switch Context`.
-4. Return quickly via `Open Context Timeline`.
-5. Open any pinned file instantly via `Quick Open Pinned File`.
+- `pin-context.batchSize`
+- `pin-context.findFilesMaxResults`
+- `pin-context.debug`
 
-## 🖱️ Drag and Drop
+## Docs and Local Dev
 
-- Drag files from Explorer into `Pinned Files` to pin them instantly.
-- Dropped files are synchronized with the active manual context automatically.
-- Supports common VS Code drag payloads (`uri-list`, explorer tree payloads).
-
-## 🎛️ Customize Shortcuts by Command
-
-You can override defaults in `keybindings.json`:
-
-```json
-[
-  {
-    "key": "ctrl+cmd+p",
-    "command": "pin-context.pinCurrentEditor",
-    "when": "editorTextFocus"
-  },
-  {
-    "key": "ctrl+cmd+shift+s",
-    "command": "pin-context.switchContext"
-  },
-  {
-    "key": "ctrl+cmd+shift+o",
-    "command": "pin-context.quickOpenPinned"
-  },
-  {
-    "key": "ctrl+cmd+r",
-    "command": "pin-context.refreshPinnedView"
-  }
-]
-```
-
-To remove a default shortcut, prefix command with `-`:
-
-```json
-{
-  "key": "ctrl+cmd+k",
-  "command": "-pin-context.pinCurrentEditor"
-}
-```
-
-## 📝 Notes
-
-- On first use, the onboarding CTA and empty states guide you to your first context.
-- Git contexts are opt-in and meant as an additional mode, not the default.
-- For best performance in very large workspaces, tune `batchSize` and `findFilesMaxResults`.
-
-## 🌐 GitHub Page
-
-A modern project landing page is available in `docs/`:
-
-- Entry file: `docs/index.html`
-- Styles: `docs/styles.css`
-- Script: `docs/script.js`
-- Translations: `docs/i18n/en.json`, `docs/i18n/ru.json`
-- Includes language switcher (EN/RU) and platform switcher (macOS / Windows/Linux) for shortcut display.
-
-To publish it with GitHub Pages:
-
-1. Go to your repository **Settings** -> **Pages**.
-2. In **Build and deployment**, choose:
-   - **Source**: `Deploy from a branch`
-   - **Branch**: `master` (or your default branch)
-   - **Folder**: `/docs`
-3. Save and wait for deployment to complete.
-
-> Works on GitHub Pages as static assets: `index.html` loads `script.js`, and `script.js` fetches translation JSON files from `docs/i18n/`.
->
-> For local preview, use HTTP (not `file://`):
->
-> - `npm run docs:serve`
-> - open [http://localhost:4173](http://localhost:4173)
-
-## 🧹 Code Quality
-
-This project includes ESLint + Prettier + Husky pre-commit checks.
-
-### Available scripts
-
-- `npm run lint`: run ESLint for TypeScript sources.
-- `npm run lint:fix`: auto-fix lint issues when possible.
-- `npm run format`: apply Prettier formatting.
-- `npm run format:check`: verify Prettier formatting.
-- `npm run compile`: TypeScript compile check.
-- `npm run docs:serve`: run local HTTP server for `docs/`.
-- `npm run precommit:check`: runs `format:check`, `lint`, `compile`.
-
-### Pre-commit hook
-
-Before each commit, Husky runs:
-
-1. `npm run format:check`
-2. `npm run lint`
-3. `npm run compile`
+- Docs site: `docs/index.html`
+- Local docs preview: `npm run docs:serve` -> [http://localhost:4173](http://localhost:4173)
+- Build: `npm run compile`
+- Lint: `npm run lint`
+- Pre-commit checks: `npm run precommit:check`
 
 ## 💰 Support the Project
 

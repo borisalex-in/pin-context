@@ -130,7 +130,7 @@ export class GitContextService implements vscode.Disposable {
   private shouldPoll(): boolean {
     const autoGitContexts = vscode.workspace
       .getConfiguration('pin-context')
-      .get<boolean>('contexts.autoGitContexts', false);
+      .get<boolean>('contexts.autoGitContexts', true);
     const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
     return autoGitContexts && hasWorkspace && vscode.window.state.focused;
   }

@@ -36,9 +36,9 @@ export async function activate(context: vscode.ExtensionContext) {
   const updateTreeViewTitle = () => {
     const activeContext = contextStore.getActiveContext();
     if (activeContext) {
-      treeView.title = `📌 Pinned Files (${activeContext.name})`;
+      treeView.title = `Pin Context (${activeContext.name})`;
     } else {
-      treeView.title = '📌 Pinned Files';
+      treeView.title = 'Pin Context';
     }
   };
 
@@ -285,7 +285,7 @@ async function showOnboardingIfNeeded(context: vscode.ExtensionContext): Promise
   await context.globalState.update(ONBOARDING_SHOWN_KEY, true);
 
   const selection = await vscode.window.showInformationMessage(
-    'Pin Context: Save and restore your working tabs as contexts.',
+    'Pin Context: Save and restore working tabs as contexts. Git branch contexts are enabled by default.',
     'Create Context',
     'Open Commands',
     'Quick Demo'
@@ -303,7 +303,7 @@ async function showOnboardingIfNeeded(context: vscode.ExtensionContext): Promise
 
   if (selection === 'Quick Demo') {
     await vscode.window.showInformationMessage(
-      'Quick demo: pin a few files, then run "Pin Context: Create Context", and switch contexts to restore tabs instantly.'
+      'Quick demo: pin a few files, create a context, then switch contexts to restore tabs instantly. Git branch contexts are already active.'
     );
     await vscode.commands.executeCommand('workbench.action.quickCommand', 'Pin Context');
   }

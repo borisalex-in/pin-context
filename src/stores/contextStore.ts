@@ -257,7 +257,7 @@ export class ContextStore implements vscode.Disposable {
   }
 
   async refreshGitContexts(): Promise<void> {
-    if (!this.getConfig('contexts.autoGitContexts', false)) return;
+    if (!this.getConfig('contexts.autoGitContexts', true)) return;
 
     const gitContexts = await this.gitContextService.getCurrentWorkspaceGitContexts();
     const now = Date.now();
