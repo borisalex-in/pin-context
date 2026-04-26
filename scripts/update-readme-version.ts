@@ -1,6 +1,6 @@
-const fs = require('fs');
-const path = require('path');
-const pkg = require('../package.json');
+import fs from 'fs';
+import path from 'path';
+import pkg from '../package.json';
 
 const readmePath = path.resolve(__dirname, '../README.md');
 

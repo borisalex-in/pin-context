@@ -1,12 +1,24 @@
 # Pin Context for VS Code
 
-[![Version](https://img.shields.io/badge/version-0.0.3-blue.svg)](https://github.com/borisalex-in/pin-context)
+[![Version](https://img.shields.io/badge/version-0.0.4-blue.svg)](https://github.com/borisalex-in/pin-context)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85.0-007ACC)](https://code.visualstudio.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-3178C6)](https://www.typescriptlang.org/)
 [![Support](https://img.shields.io/badge/Support-Crypto-FF9900?logo=bitcoin&logoColor=white)](#-support-the-project)
 
 Pin Context turns pinned tabs into a fast workflow/navigation system for VS Code.
+
+## 🚀 Quick Start (1 minute)
+
+1. Open a few files and pin them (`Pin Current Editor`).
+2. Run `Pin Context: Create Context`.
+3. Switch using `Pin Context: Switch Context` and watch tabs restore instantly.
+
+On first run, Pin Context now shows a compact onboarding message with actions:
+
+- `Create Context`
+- `Open Commands`
+- `Quick Demo`
 
 ## ✨ Features
 
@@ -20,6 +32,9 @@ Pin Context turns pinned tabs into a fast workflow/navigation system for VS Code
 - 🚀 **Scalable behavior**: batching, debounce, caching, and progress reporting for large tab sets.
 - 💾 **Configurable persistence**: choose global or workspace scope for pins and contexts.
 - 📊 **Status bar integration**: live pinned count with low-noise updates.
+- 🎯 **Onboarding + empty states**: first-run CTA, contextual sidebar hints, and guided nudges.
+- 🧱 **More robust internals**: operation queue, safer context synchronization, and error-handled persistence.
+- 🔋 **Smarter git polling**: lazy/visibility-aware polling with adaptive intervals (active vs idle).
 
 ## ⌨️ Keyboard Shortcuts (Default)
 
@@ -78,6 +93,19 @@ Contexts are named snapshots of your pinned working set:
 - **Git contexts**:
   - Optional feature; disabled by default via `pin-context.contexts.autoGitContexts`.
 
+## 🧭 Onboarding Experience
+
+Pin Context includes lightweight onboarding to reduce time-to-value:
+
+- **First launch CTA**: start with `Create Context`, open commands, or run a quick demo prompt.
+- **Contextual empty states** in sidebar:
+  - No pinned files -> pin current editor.
+  - No contexts yet -> create first context.
+  - Pinned files exist but no contexts -> save pinned setup as a context.
+- **Behavior reinforcement**:
+  - After first context creation: prompt to switch and see context restore in action.
+  - After early context switches: one-time usage nudge.
+
 ## 🛠️ Sidebar Menu
 
 In the `Pinned Files` view:
@@ -119,6 +147,7 @@ In the `Pinned Files` view:
 - `pin-context.contexts.timelineEnabled`: enable context timeline entries.
 - `pin-context.contexts.maxTimelineEntries`: timeline retention limit.
 - `pin-context.contexts.persistenceScope`: context storage scope (`globalState`/`workspaceState`).
+- `pin-context.contexts.autoSwitchOnGitBranchChange` (default: `true`): switch to matching git context on branch change.
 
 ## 🧪 Typical Workflow
 
@@ -171,7 +200,7 @@ To remove a default shortcut, prefix command with `-`:
 
 ## 📝 Notes
 
-- On first use, create a manual context to start context-based workflow.
+- On first use, the onboarding CTA and empty states guide you to your first context.
 - Git contexts are opt-in and meant as an additional mode, not the default.
 - For best performance in very large workspaces, tune `batchSize` and `findFilesMaxResults`.
 
@@ -231,7 +260,7 @@ Before each commit, Husky runs:
   <img src="./images/icon-btc.png" width="18"/> 
   <b>BTC:</b> 
   <code>bc1qvcm9x9prgn7njvxzktmwg0jn8rv9vjm6azus63</code><br/>
-  <span style="opacity:0.7;">(send only via Bitcoin network)</span><br/>
+  <span style="opacity:0.7;">(send only via Bitcoin network)</span><br/><br/>
 
   <img src="./images/icon-eth.png" width="18"/> 
   <b>ETH / USDT (ERC20):</b> 

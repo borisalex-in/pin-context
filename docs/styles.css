@@ -41,6 +41,10 @@ body {
   line-height: 1.55;
 }
 
+svg {
+  will-change: transform;
+}
+
 .page {
   width: min(1120px, calc(100% - 2.5rem));
   margin: 0 auto;
@@ -200,7 +204,6 @@ h1 {
 
 .button--icon svg {
   position: relative;
-  will-change: transform;
 }
 
 .button--ghost {
@@ -766,6 +769,10 @@ code {
   body {
     background:
       radial-gradient(circle at 105% 0%, rgba(74, 158, 70, 0.28), transparent 8%), var(--bg);
+  }
+
+  h1 {
+    line-height: 1.2;
   }
 
   .page {

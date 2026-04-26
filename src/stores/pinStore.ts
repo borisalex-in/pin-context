@@ -1,6 +1,6 @@
 import * as vscode from 'vscode';
 import { minimatch } from 'minimatch';
-import { PinRecord, getPrimaryTabUri, toPinRecord, toUriKey } from './tabUtils';
+import { PinRecord, getPrimaryTabUri, toPinRecord, toUriKey } from '../utils/tabUtils';
 
 const PERSISTED_PINS_KEY = 'pin-context.pinnedUris';
 const DEFAULT_BATCH_SIZE = 8;
@@ -154,6 +154,10 @@ export class PinStore implements vscode.Disposable {
     return this.applyPinState(uris, false, options);
   }
 
+  syncWithOpenTabs(): void {
+    this.refreshFromTabs();
+  }
+
   private isUriPinned(uri: vscode.Uri): boolean {
     return this.pinnedByKey.has(toUriKey(uri));
   }
@@ -220,7 +224,12 @@ export class PinStore implements vscode.Disposable {
 
   private async persistPinnedUris(): Promise<void> {
     const uris = [...this.pinnedByKey.values()].map((item) => item.uri.toString());
-    await this.getPersistenceMemento().update(PERSISTED_PINS_KEY, uris);
+    try {
+      await this.getPersistenceMemento().update(PERSISTED_PINS_KEY, uris);
+    } catch (error) {
+      console.error('[pin-context] Failed to persist pinned URIs', error);
+      void vscode.window.showErrorMessage('Failed to save pinned files');
+    }
   }
 
   private async restorePinnedTabs(): Promise<void> {

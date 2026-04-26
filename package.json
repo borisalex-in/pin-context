@@ -1,8 +1,8 @@
 {
   "name": "pin-context",
   "displayName": "Pin Context",
-  "description": "Advanced pin management for VS Code editors with keyboard shortcuts",
-  "version": "0.0.3",
+  "description": "Advanced context and pin management for VS Code with instant keyboard navigation",
+  "version": "0.0.4",
   "publisher": "borisalex-in",
   "icon": "images/icon.png",
   "author": {
@@ -24,8 +24,8 @@
     "format:check": "prettier --check \"**/*.{ts,js,json,md,css,html,yml,yaml}\"",
     "precommit:check": "npm run format:check && npm run lint && npm run compile",
     "prepare": "husky",
-    "version": "node scripts/update-readme-version.js",
-    "postversion": "git add -A && git commit && git tag v$(node -p \"require('./package.json').version\") && git push --follow-tags",
+    "version": "tsx scripts/update-readme-version.ts",
+    "postversion": "git add -A && git commit && git tag v$(node -p \"require('./package.json').version\") && git push origin --tags",
     "release:patch": "npm run precommit:check && npm run build:vsix && npm version patch --no-git-tag-version",
     "release:minor": "npm run precommit:check && npm run build:vsix && npm version minor --no-git-tag-version",
     "release:major": "npm run precommit:check && npm run build:vsix && npm version major --no-git-tag-version",
@@ -40,26 +40,26 @@
     "reinstall:local": "npm run build:vsix && npm run install:local"
   },
   "keywords": [
+    "vscode",
     "pin tabs",
     "pinned tabs",
-    "pin files",
-    "bookmark files",
-    "code bookmarks",
     "tab manager",
-    "editor tabs",
-    "workspace navigation",
-    "code navigation",
-    "file navigation",
+    "tab organizer",
+    "tab workflow",
+    "session manager",
+    "workspace context",
+    "context manager",
     "context switching",
-    "workflow management",
-    "task context",
+    "task switching",
+    "workflow",
     "developer productivity",
     "quick open",
     "fuzzy search",
-    "workspace tools",
-    "sidebar tools",
-    "git workflow",
-    "context manager"
+    "sidebar",
+    "file bookmarks",
+    "code bookmarks",
+    "git branch context",
+    "navigation"
   ],
   "engines": {
     "vscode": "^1.85.0"
@@ -212,20 +212,17 @@
       {
         "command": "pin-context.pinCurrentEditor",
         "key": "ctrl+shift+k",
-        "mac": "cmd+alt+k",
-        "when": "editorTextFocus"
+        "mac": "cmd+alt+k"
       },
       {
         "command": "pin-context.unpinCurrentEditor",
         "key": "ctrl+shift+l",
-        "mac": "cmd+alt+l",
-        "when": "editorTextFocus"
+        "mac": "cmd+alt+l"
       },
       {
         "command": "pin-context.togglePinCurrentEditor",
         "key": "ctrl+shift+j",
-        "mac": "cmd+alt+j",
-        "when": "editorTextFocus"
+        "mac": "cmd+alt+j"
       },
       {
         "command": "pin-context.switchContext",
@@ -455,7 +452,8 @@
     "husky": "^9.1.7",
     "path": "^0.12.7",
     "prettier": "^3.8.3",
-    "typescript": "^5.3.0"
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3"
   },
   "overrides": {
     "cheerio": "1.0.0-rc.12"

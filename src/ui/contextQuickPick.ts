@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
-import { ContextStore } from './contextStore';
-import { ContextQuickPickItem } from './types';
-import { PinStore } from './pinStore';
+import { ContextStore } from '../stores/contextStore';
+import { ContextQuickPickItem } from '../types';
+import { PinStore } from '../stores/pinStore';
 
 export async function showSwitchContextQuickPick(contextStore: ContextStore): Promise<void> {
   const activeId = contextStore.getActiveContext()?.id;

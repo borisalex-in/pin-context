@@ -1,9 +1,9 @@
 import * as vscode from 'vscode';
 import * as path from 'path';
-import { ContextStore } from './contextStore';
-import { ContextTimelineEntry, PinContext } from './types';
-import { PinStore } from './pinStore';
-import { PinRecord } from './tabUtils';
+import { ContextStore } from '../stores/contextStore';
+import { ContextTimelineEntry, PinContext } from '../types';
+import { PinStore } from '../stores/pinStore';
+import { PinRecord } from '../utils/tabUtils';
 
 export class PinnedTreeItem extends vscode.TreeItem {
   constructor(
@@ -79,6 +79,39 @@ class EmptyPinnedItem extends vscode.TreeItem {
     this.contextValue = 'pinnedEmpty';
     this.iconPath = new vscode.ThemeIcon('info');
     this.description = 'Pin files to see them here';
+    this.command = {
+      command: 'pin-context.pinCurrentEditor',
+      title: 'Pin Current Editor'
+    };
+  }
+}
+
+class EmptyContextsItem extends vscode.TreeItem {
+  constructor() {
+    super('No contexts yet', vscode.TreeItemCollapsibleState.None);
+    this.contextValue = 'contextsEmpty';
+    this.iconPath = new vscode.ThemeIcon('lightbulb');
+    this.description = 'Save current tabs and switch instantly';
+    this.tooltip =
+      'Save your current pinned tabs as a context and restore them instantly when switching tasks.';
+    this.command = {
+      command: 'pin-context.createContext',
+      title: 'Create Context'
+    };
+  }
+}
+
+class SavePinnedAsContextHintItem extends vscode.TreeItem {
+  constructor() {
+    super('Turn pinned files into a context', vscode.TreeItemCollapsibleState.None);
+    this.contextValue = 'contextsHint';
+    this.iconPath = new vscode.ThemeIcon('save');
+    this.description = 'Capture this setup for fast switching';
+    this.tooltip = 'Create a context now to switch back to this exact set of tabs later.';
+    this.command = {
+      command: 'pin-context.createContext',
+      title: 'Create Context'
+    };
   }
 }
 
@@ -401,6 +434,7 @@ export class PinnedTreeViewProvider
   }
 
   private loadPinnedItems(): void {
+    this.pinStore.syncWithOpenTabs();
     this.pinnedItems = this.pinStore.getPinnedItems();
     this.folderCache = new Map<string, PinRecord[]>();
     for (const item of this.pinnedItems) {
@@ -425,9 +459,18 @@ export class PinnedTreeViewProvider
     if (element instanceof ContextSectionItem) {
       if (element.section === 'contexts') {
         const activeId = this.contextStore.getActiveContext()?.id;
-        return this.contextStore
+        const contexts = this.contextStore
           .getAllContexts()
           .map((context) => new ContextItem(context, context.id === activeId));
+        if (contexts.length > 0) {
+          return contexts;
+        }
+
+        if (this.pinnedItems.length > 0) {
+          return [new EmptyContextsItem(), new SavePinnedAsContextHintItem()];
+        }
+
+        return [new EmptyContextsItem()];
       }
 
       if (element.section === 'timeline') {

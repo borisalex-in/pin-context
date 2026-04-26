@@ -1,10 +1,18 @@
 import * as vscode from 'vscode';
-import { ContextSnapshot, ContextTimelineEntry, PinContext } from './types';
-import { GitContextService } from './gitContextService';
+import { ContextSnapshot, ContextTimelineEntry, PinContext } from '../types';
+import { GitContextService } from '../services/gitContextService';
 import { PinStore } from './pinStore';
-import { toUriKey } from './tabUtils';
+import { OperationQueue } from '../core/operationQueue';
+import { ContextPersistenceService } from '../services/contextPersistenceService';
+import { ContextSyncService } from '../services/contextSyncService';
 
-const CONTEXTS_STATE_KEY = 'pin-context.contexts.snapshot';
+type ContextConfigSchema = {
+  'contexts.autoGitContexts': boolean;
+  'contexts.restoreLastContext': boolean;
+  'contexts.timelineEnabled': boolean;
+  'contexts.maxTimelineEntries': number;
+  'contexts.autoSwitchOnGitBranchChange': boolean;
+};
 
 export class ContextStore implements vscode.Disposable {
   private readonly onDidChangeEmitter = new vscode.EventEmitter<void>();
@@ -14,7 +22,11 @@ export class ContextStore implements vscode.Disposable {
   private gitBranchDisposable: vscode.Disposable;
   private gitStatusDisposable: vscode.Disposable;
 
-  private isApplyingContext = false;
+  private readonly operationQueue = new OperationQueue();
+  private suppressPinSync = 0;
+  private activeSwitchCts: vscode.CancellationTokenSource | undefined;
+  private readonly persistenceService: ContextPersistenceService;
+  private readonly syncService: ContextSyncService;
 
   private readonly contexts = new Map<string, PinContext>();
   private activeContextId: string | undefined;
@@ -26,28 +38,26 @@ export class ContextStore implements vscode.Disposable {
     private readonly pinStore: PinStore,
     private readonly gitContextService: GitContextService
   ) {
+    this.persistenceService = new ContextPersistenceService(context);
+    this.syncService = new ContextSyncService(pinStore);
+
     this.pinStoreDisposable = this.pinStore.onDidChange(() => {
-      if (this.isApplyingContext) return;
+      if (this.suppressPinSync > 0) return;
       void this.syncActiveContextFromPins();
     });
 
     this.gitBranchDisposable = this.gitContextService.onDidChangeBranch(async (event) => {
       const gitContextId = `git:${event.workspaceFolder}:${event.newBranch}`;
+      await this.refreshGitContexts();
 
-      const exists = this.contexts.has(gitContextId);
-      if (!exists) {
-        await this.refreshGitContexts();
-      } else {
-        await this.refreshGitContexts();
+      const autoSwitch = this.getConfig('contexts.autoSwitchOnGitBranchChange', true);
+      if (!autoSwitch) {
+        return;
       }
 
-      const autoSwitch = this.getConfig<boolean>('contexts.autoSwitchOnGitBranchChange', true);
-
-      if (autoSwitch) {
-        const target = this.contexts.get(gitContextId);
-        if (target) {
-          await this.switchContext(gitContextId, 'switch');
-        }
+      const target = this.contexts.get(gitContextId);
+      if (target) {
+        await this.switchContext(gitContextId, 'switch');
       }
     });
 
@@ -63,7 +73,7 @@ export class ContextStore implements vscode.Disposable {
     this.load();
     await this.refreshGitContexts();
 
-    if (this.getConfig<boolean>('contexts.restoreLastContext', true)) {
+    if (this.getConfig('contexts.restoreLastContext', true)) {
       const restoreId = this.lastActiveContextId ?? this.activeContextId;
       if (restoreId && this.contexts.has(restoreId)) {
         await this.switchContext(restoreId, 'restore');
@@ -75,6 +85,8 @@ export class ContextStore implements vscode.Disposable {
     this.pinStoreDisposable.dispose();
     this.gitBranchDisposable.dispose();
     this.gitStatusDisposable?.dispose();
+    this.activeSwitchCts?.cancel();
+    this.activeSwitchCts?.dispose();
     this.onDidChangeEmitter.dispose();
   }
 
@@ -117,7 +129,7 @@ export class ContextStore implements vscode.Disposable {
   async createManualContext(name: string): Promise<PinContext> {
     const now = Date.now();
     const contextId = `manual:${now}`;
-    const pinnedUris = this.pinStore.getPinnedUris().map((uri) => uri.toString());
+    const pinnedUris = this.syncService.getPinnedUriStrings();
 
     const created: PinContext = {
       id: contextId,
@@ -142,7 +154,7 @@ export class ContextStore implements vscode.Disposable {
     const item = this.contexts.get(contextId);
     if (!item) return;
 
-    item.pinnedUris = this.pinStore.getPinnedUris().map((uri) => uri.toString());
+    item.pinnedUris = this.syncService.getPinnedUriStrings();
     item.updatedAt = Date.now();
 
     this.contexts.set(contextId, item);
@@ -196,51 +208,56 @@ export class ContextStore implements vscode.Disposable {
     const target = this.contexts.get(contextId);
     if (!target) return false;
 
-    this.isApplyingContext = true;
+    this.activeSwitchCts?.cancel();
+    this.activeSwitchCts?.dispose();
+    const switchCts = new vscode.CancellationTokenSource();
+    this.activeSwitchCts = switchCts;
 
-    try {
-      const targetUris = target.pinnedUris.map((u) => vscode.Uri.parse(u));
+    return this.operationQueue.runExclusive(async () => {
+      const token = switchCts.token;
+      this.suppressPinSync += 1;
 
-      const current = this.pinStore.getPinnedUris();
-      const currentKeys = new Set(current.map((u) => toUriKey(u)));
-      const targetKeys = new Set(targetUris.map((u) => toUriKey(u)));
+      try {
+        const { toUnpin, toPin } = this.syncService.buildPinDiff(target);
 
-      const toUnpin = current.filter((u) => !targetKeys.has(toUriKey(u)));
-      const toPin = targetUris.filter((u) => !currentKeys.has(toUriKey(u)));
+        if (!token.isCancellationRequested && toUnpin.length > 0) {
+          await this.pinStore.unpinUris(toUnpin, {
+            showProgress: toUnpin.length > 15,
+            title: `Switching to ${target.name}`
+          });
+        }
 
-      if (toUnpin.length > 0) {
-        await this.pinStore.unpinUris(toUnpin, {
-          showProgress: toUnpin.length > 15,
-          title: `Switching to ${target.name}`
-        });
+        if (!token.isCancellationRequested && toPin.length > 0) {
+          await this.pinStore.pinUris(toPin, {
+            showProgress: toPin.length > 15,
+            title: `Switching to ${target.name}`
+          });
+        }
+      } finally {
+        this.suppressPinSync = Math.max(0, this.suppressPinSync - 1);
       }
 
-      if (toPin.length > 0) {
-        await this.pinStore.pinUris(toPin, {
-          showProgress: toPin.length > 15,
-          title: `Switching to ${target.name}`
-        });
+      if (token.isCancellationRequested) {
+        return false;
       }
-    } finally {
-      this.isApplyingContext = false;
-    }
 
-    this.lastActiveContextId = this.activeContextId;
-    this.activeContextId = contextId;
+      this.lastActiveContextId = this.activeContextId;
+      this.activeContextId = contextId;
 
-    target.updatedAt = Date.now();
-    this.contexts.set(contextId, target);
+      target.updatedAt = Date.now();
+      this.contexts.set(contextId, target);
 
-    this.pushTimeline(contextId, target.name, action);
+      this.pushTimeline(contextId, target.name, action);
 
-    await this.persist();
-    this.onDidChangeEmitter.fire();
+      await this.persist();
+      this.onDidChangeEmitter.fire();
 
-    return true;
+      return true;
+    });
   }
 
   async refreshGitContexts(): Promise<void> {
-    if (!this.getConfig<boolean>('contexts.autoGitContexts', false)) return;
+    if (!this.getConfig('contexts.autoGitContexts', false)) return;
 
     const gitContexts = await this.gitContextService.getCurrentWorkspaceGitContexts();
     const now = Date.now();
@@ -272,7 +289,7 @@ export class ContextStore implements vscode.Disposable {
     contextName: string,
     action: ContextTimelineEntry['action']
   ): void {
-    if (!this.getConfig<boolean>('contexts.timelineEnabled', true)) return;
+    if (!this.getConfig('contexts.timelineEnabled', true)) return;
 
     this.timeline.unshift({
       id: `${contextId}:${Date.now()}:${action}`,
@@ -282,12 +299,12 @@ export class ContextStore implements vscode.Disposable {
       timestamp: Date.now()
     });
 
-    const max = this.getConfig<number>('contexts.maxTimelineEntries', 100);
+    const max = this.getConfig('contexts.maxTimelineEntries', 100);
     this.timeline = this.timeline.slice(0, max);
   }
 
   private load(): void {
-    const snapshot = this.getStorage().get<ContextSnapshot | undefined>(CONTEXTS_STATE_KEY);
+    const snapshot = this.persistenceService.load();
     if (!snapshot) return;
 
     this.contexts.clear();
@@ -309,15 +326,14 @@ export class ContextStore implements vscode.Disposable {
       timeline: this.timeline
     };
 
-    await this.getStorage().update(CONTEXTS_STATE_KEY, snapshot);
+    await this.persistenceService.save(snapshot);
   }
 
-  private getStorage(): vscode.Memento {
-    return this.context.workspaceState;
-  }
-
-  private getConfig<T>(key: string, fallback: T): T {
-    return vscode.workspace.getConfiguration('pin-context').get<T>(key, fallback);
+  private getConfig<K extends keyof ContextConfigSchema>(
+    key: K,
+    fallback: ContextConfigSchema[K]
+  ): ContextConfigSchema[K] {
+    return vscode.workspace.getConfiguration('pin-context').get(key, fallback);
   }
 
   private async syncActiveContextFromPins(): Promise<void> {
@@ -326,7 +342,7 @@ export class ContextStore implements vscode.Disposable {
     const active = this.contexts.get(this.activeContextId);
     if (!active) return;
 
-    const next = this.pinStore.getPinnedUris().map((u) => u.toString());
+    const next = this.syncService.getPinnedUriStrings();
     const prev = active.pinnedUris;
 
     if (prev.length === next.length && prev.every((v, i) => v === next[i])) {

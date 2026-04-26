@@ -23,7 +23,12 @@ export class GitContextService implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
 
   private pollInterval: NodeJS.Timeout | undefined;
-  private readonly pollMs = 4000;
+  private readonly activePollMs = 4000;
+  private readonly idlePollMs = 12000;
+  private currentPollMs = this.activePollMs;
+  private unchangedPollCycles = 0;
+  private readonly visibilityDisposable: vscode.Disposable;
+  private readonly configDisposable: vscode.Disposable;
 
   private lastBranches = new Map<string, string>();
   private lastStateHash = new Map<string, string>();
@@ -41,11 +46,21 @@ export class GitContextService implements vscode.Disposable {
 
   constructor() {
     this.setupWorkspaceTracking();
-    this.startPolling();
+    this.visibilityDisposable = vscode.window.onDidChangeWindowState(() => {
+      this.updatePollingState();
+    });
+    this.configDisposable = vscode.workspace.onDidChangeConfiguration((event) => {
+      if (event.affectsConfiguration('pin-context.contexts.autoGitContexts')) {
+        this.updatePollingState();
+      }
+    });
+    this.updatePollingState();
   }
 
   dispose(): void {
     this.disposables.forEach((d) => d.dispose());
+    this.visibilityDisposable.dispose();
+    this.configDisposable.dispose();
     this.stopPolling();
 
     this.onDidChangeBranchEmitter.dispose();
@@ -74,6 +89,8 @@ export class GitContextService implements vscode.Disposable {
         this.lastStateHash.delete(key);
       }
     }
+
+    this.updatePollingState();
   }
 
   private startPolling(): void {
@@ -81,7 +98,7 @@ export class GitContextService implements vscode.Disposable {
 
     this.pollInterval = setInterval(() => {
       void this.pollGitState();
-    }, this.pollMs);
+    }, this.currentPollMs);
   }
 
   private stopPolling(): void {
@@ -91,8 +108,36 @@ export class GitContextService implements vscode.Disposable {
     this.pollInterval = undefined;
   }
 
+  private restartPolling(nextIntervalMs: number): void {
+    if (this.currentPollMs === nextIntervalMs && this.pollInterval) {
+      return;
+    }
+    this.currentPollMs = nextIntervalMs;
+    this.stopPolling();
+    this.startPolling();
+  }
+
+  private updatePollingState(): void {
+    if (this.shouldPoll()) {
+      this.restartPolling(this.currentPollMs);
+      return;
+    }
+    this.unchangedPollCycles = 0;
+    this.currentPollMs = this.activePollMs;
+    this.stopPolling();
+  }
+
+  private shouldPoll(): boolean {
+    const autoGitContexts = vscode.workspace
+      .getConfiguration('pin-context')
+      .get<boolean>('contexts.autoGitContexts', false);
+    const hasWorkspace = (vscode.workspace.workspaceFolders?.length ?? 0) > 0;
+    return autoGitContexts && hasWorkspace && vscode.window.state.focused;
+  }
+
   private async pollGitState(): Promise<void> {
     const folders = vscode.workspace.workspaceFolders ?? [];
+    let hasStateChange = false;
 
     for (const folder of folders) {
       const path = folder.uri.fsPath;
@@ -104,6 +149,7 @@ export class GitContextService implements vscode.Disposable {
 
         if (oldBranch && oldBranch !== info.branch) {
           this.cache.delete(path);
+          hasStateChange = true;
 
           this.onDidChangeBranchEmitter.fire({
             workspaceFolder: path,
@@ -118,11 +164,23 @@ export class GitContextService implements vscode.Disposable {
         const oldHash = this.lastStateHash.get(path);
 
         if (oldHash && oldHash !== newHash) {
+          hasStateChange = true;
           this.onDidChangeStatusEmitter.fire();
         }
 
         this.lastStateHash.set(path, newHash);
       } catch {}
+    }
+
+    if (hasStateChange) {
+      this.unchangedPollCycles = 0;
+      this.restartPolling(this.activePollMs);
+      return;
+    }
+
+    this.unchangedPollCycles += 1;
+    if (this.unchangedPollCycles >= 3) {
+      this.restartPolling(this.idlePollMs);
     }
   }
 
@@ -155,15 +213,16 @@ export class GitContextService implements vscode.Disposable {
     }
 
     const branch = await this.getCurrentBranch(folderPath);
-    const status = await this.execGit(['status', '--porcelain'], folderPath);
-
-    const lines = status.split('\n').filter(Boolean);
+    const [changedRaw, stagedRaw] = await Promise.all([
+      this.execGit(['diff', '--name-only'], folderPath),
+      this.execGit(['diff', '--cached', '--name-only'], folderPath)
+    ]);
 
     const value: GitContextInfo = {
       workspaceFolder: folderPath,
       branch,
-      staged: lines.filter((l) => l[0] !== ' ').length,
-      changed: lines.filter((l) => l[1] !== ' ').length
+      staged: this.countLines(stagedRaw),
+      changed: this.countLines(changedRaw)
     };
 
     this.cache.set(folderPath, { value, createdAt: Date.now() });
@@ -174,5 +233,12 @@ export class GitContextService implements vscode.Disposable {
   private async execGit(args: string[], cwd: string): Promise<string> {
     const { stdout } = await execFileAsync('git', args, { cwd });
     return stdout;
+  }
+
+  private countLines(raw: string): number {
+    if (!raw.trim()) {
+      return 0;
+    }
+    return raw.split('\n').filter(Boolean).length;
   }
 }
