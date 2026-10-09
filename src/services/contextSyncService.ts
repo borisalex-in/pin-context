@@ -1,7 +1,7 @@
 import * as vscode from 'vscode';
 import { PinContext } from '../types';
 import { PinStore } from '../stores/pinStore';
-import { toUriKey } from '../utils/tabUtils';
+import { parseUri, toUriKey } from '../utils/tabUtils';
 
 export interface PinDiff {
   toPin: vscode.Uri[];
@@ -12,7 +12,9 @@ export class ContextSyncService {
   constructor(private readonly pinStore: PinStore) {}
 
   buildPinDiff(targetContext: PinContext): PinDiff {
-    const targetUris = targetContext.pinnedUris.map((value) => vscode.Uri.parse(value));
+    const targetUris = targetContext.pinnedUris
+      .map((value) => parseUri(value))
+      .filter((uri): uri is vscode.Uri => Boolean(uri));
     const current = this.pinStore.getPinnedUris();
     const currentKeys = new Set(current.map((uri) => toUriKey(uri)));
     const targetKeys = new Set(targetUris.map((uri) => toUriKey(uri)));

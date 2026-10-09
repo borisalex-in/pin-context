@@ -60,3 +60,8 @@ yarn.lock
 # Extension packaging
 *.vsix
 *.vsixmanifest
+
+# Other
+AGENTS.md
+IMPROVEMENTS.md
+RELEASE.md

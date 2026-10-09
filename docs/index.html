@@ -670,9 +670,54 @@
         <a href="https://github.com/borisalex-in/pin-context"
           >github.com/borisalex-in/pin-context</a
         >
+        <button
+          class="privacy-settings"
+          id="analyticsSettings"
+          type="button"
+          data-i18n="privacy-settings"
+        >
+          Privacy &amp; analytics
+        </button>
       </footer>
     </div>
 
+    <aside
+      class="analytics-consent"
+      id="analyticsConsent"
+      role="dialog"
+      aria-labelledby="analyticsConsentTitle"
+      aria-describedby="analyticsConsentText"
+      hidden
+    >
+      <div class="analytics-consent__copy">
+        <strong id="analyticsConsentTitle" data-i18n="analytics-title">Optional analytics</strong>
+        <p id="analyticsConsentText" data-i18n="analytics-copy">
+          With your consent, Google Analytics receives page views and interactions such as feature
+          clicks, language and platform selection, and approximate engagement time. Query strings
+          and URL fragments are removed. Analytics is off unless you accept.
+        </p>
+      </div>
+      <div class="analytics-consent__actions">
+        <button
+          id="analyticsAccept"
+          class="button button--small"
+          type="button"
+          data-i18n="analytics-accept"
+        >
+          Accept analytics
+        </button>
+        <button
+          id="analyticsReject"
+          class="button button--small button--secondary"
+          type="button"
+          data-i18n="analytics-reject"
+        >
+          Reject
+        </button>
+      </div>
+    </aside>
+
+    <script src="analytics.js" defer></script>
     <script src="script.js" defer></script>
   </body>
 </html>

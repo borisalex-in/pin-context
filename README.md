@@ -7,6 +7,8 @@
 
 Pin Context helps developers switch tasks without losing focus: save pinned tabs as contexts, restore them instantly, and keep branch-based workflows organized automatically.
 
+🇷🇺 **Русский:** расширение полностью переведено на русский язык — переключите VS Code на русский, и Pin Context автоматически подхватит перевод.
+
 ## 💡 Why Developers Use It
 
 - ⚡ **Switch tasks fast**: jump from feature work to bugfix or review and restore the right files in one action.
@@ -24,6 +26,10 @@ Pin Context helps developers switch tasks without losing focus: save pinned tabs
 - 📁 Sidebar workflow: pinned files + contexts + recent contexts.
 - 🖱️ Drag-and-drop from Explorer into pinned view.
 - 🎯 First-run onboarding, contextual empty states, and lightweight nudges.
+- 📦 **Working sets**: each context remembers editor cursors, scroll positions, open tabs, and the editor group layout.
+- 💾 **Repository contexts**: save and share contexts via `.vscode/pin-contexts.json`.
+- 📤 **Export / Import**: save contexts to a JSON file or load from one.
+- 🖱️ **Explorer context menu**: one command to pin/unpin the current file from the Explorer right-click menu.
 
 ## 🚀 Quick Start (1 Minute)
 
@@ -38,6 +44,7 @@ Pin Context helps developers switch tasks without losing focus: save pinned tabs
 - 🔍 **PR review**: save review tabs and return later exactly where you stopped.
 - 🚨 **Incident/debug mode**: isolate logs, diagnostics, and hotfix files in a dedicated context.
 - 🧱 **Multi-repo workspace**: keep branch/task context predictable across folders.
+- 👥 **Team sharing**: share context definitions via `.vscode/pin-contexts.json` in the repository.
 
 ---
 
@@ -56,17 +63,23 @@ Pin Context helps developers switch tasks without losing focus: save pinned tabs
 - `Pin Context: Save Current Pins to Context`
 - `Pin Context: Open Context Timeline`
 - `Pin Context: Quick Open Pinned File`
+- `Pin Context: Export Contexts`
+- `Pin Context: Import Contexts`
 - `Pin Context: Refresh Pinned Files View`
 - `Pin Context: Toggle View Mode (Tree/List)`
 
 ## Default Shortcuts
 
-| Action               | macOS              | Windows/Linux      |
-| -------------------- | ------------------ | ------------------ |
-| Pin Current Editor   | `Cmd + Option + K` | `Ctrl + Shift + K` |
-| Unpin Current Editor | `Cmd + Option + L` | `Ctrl + Shift + L` |
-| Toggle Pin           | `Cmd + Option + J` | `Ctrl + Shift + J` |
-| Switch Context       | `Cmd + Option + P` | `Ctrl + Shift + P` |
+| Action               | macOS              | Windows/Linux    |
+| -------------------- | ------------------ | ---------------- |
+| Pin Current Editor   | `Cmd + Option + K` | `Ctrl + Alt + K` |
+| Unpin Current Editor | `Cmd + Option + L` | `Ctrl + Alt + L` |
+| Toggle Pin           | `Cmd + Option + J` | `Ctrl + Alt + J` |
+| Switch Context       | `Cmd + Option + P` | `Ctrl + Alt + P` |
+
+> Since 0.0.6 the Windows/Linux defaults no longer override built-in VS Code shortcuts
+> (`Ctrl+Shift+P` is the Command Palette). If `Ctrl+Alt+letter` types special characters on
+> your keyboard layout (AltGr), rebind the commands in **Keyboard Shortcuts**.
 
 ## Main Settings
 
@@ -74,7 +87,7 @@ Pin Context helps developers switch tasks without losing focus: save pinned tabs
 
 - `pin-context.viewMode`: `tree` or `list`
 - `pin-context.confirmBeforeUnpinAll`: ask before unpinning all
-- `pin-context.persistenceScope`: `globalState` or `workspaceState`
+- `pin-context.persistenceScope`: `globalState` or `workspaceState` (default: `workspaceState`)
 - `pin-context.restoreBehavior`: `keepInTree` or `reopenAndPin`
 - `pin-context.restoreReopenLimit`: reopen limit for `reopenAndPin`
 
@@ -85,9 +98,21 @@ Pin Context helps developers switch tasks without losing focus: save pinned tabs
 - `pin-context.contexts.restoreLastContext` (default: `false`)
 - `pin-context.contexts.timelineEnabled` (default: `true`)
 - `pin-context.contexts.maxTimelineEntries` (default: `100`)
-- `pin-context.contexts.persistenceScope`: `globalState` or `workspaceState`
+- `pin-context.contexts.persistenceScope`: `globalState` or `workspaceState` (default: `workspaceState`)
+- `pin-context.contexts.repoContextsFile`: enable repository-level contexts (default: `true`)
 
-### Performance
+### Working Sets
+
+- `pin-context.contexts.captureEditorState`: save cursor position and scroll (default: `true`)
+- `pin-context.contexts.captureOpenTabs`: save open tabs (default: `false`)
+
+## Troubleshooting
+
+- Open the **Pin Context** output channel (`View > Output`) for logs.
+- Enable `pin-context.debug` for verbose logs.
+- Git contexts need `git` in `PATH` and a trusted workspace.
+
+## Performance
 
 - `pin-context.batchSize`
 - `pin-context.findFilesMaxResults`

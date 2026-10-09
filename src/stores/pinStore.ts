@@ -1,11 +1,25 @@
 import * as vscode from 'vscode';
+import { t } from '../l10n';
 import { minimatch } from 'minimatch';
-import { PinRecord, getPrimaryTabUri, toPinRecord, toUriKey } from '../utils/tabUtils';
+import { OperationQueue } from '../core/operationQueue';
+import { logger } from '../utils/logger';
+import {
+  PinRecord,
+  getPrimaryTabUri,
+  isSameOrNested,
+  isTrackableUri,
+  parseUri,
+  toPinRecord,
+  toUriKey
+} from '../utils/tabUtils';
 
 const PERSISTED_PINS_KEY = 'pin-context.pinnedUris';
 const DEFAULT_BATCH_SIZE = 8;
 const DEFAULT_FIND_FILES_LIMIT = 2000;
 const DEFAULT_RESTORE_REOPEN_LIMIT = 50;
+const REFRESH_DEBOUNCE_MS = 25;
+const ACTIVATION_TIMEOUT_MS = 1500;
+const STATE_SETTLE_TIMEOUT_MS = 500;
 
 type PersistenceScope = 'globalState' | 'workspaceState';
 type RestoreBehavior = 'keepInTree' | 'reopenAndPin';
@@ -17,34 +31,127 @@ export interface BatchOutcome {
   errors: string[];
 }
 
+export interface PinOptions {
+  showProgress?: boolean;
+  title?: string;
+  /**
+   * Open the file if it has no tab yet, so that it can be pinned.
+   * Defaults to `true` only when `restoreBehavior` is `reopenAndPin`.
+   * User-initiated commands pass `true`.
+   */
+  openIfClosed?: boolean;
+}
+
+interface UriResult {
+  status: 'success' | 'failed' | 'skipped';
+  error?: string;
+  /** The file no longer exists (or is a folder): its record must be dropped. */
+  missing?: boolean;
+}
+
+interface ActiveTabSnapshot {
+  uri: vscode.Uri;
+  viewColumn: vscode.ViewColumn;
+}
+
+const emptyOutcome = (): BatchOutcome => ({ success: 0, failed: 0, skipped: 0, errors: [] });
+
+function isFileNotFound(error: unknown): boolean {
+  if (error instanceof vscode.FileSystemError) {
+    return error.code === 'FileNotFound' || /ENOENT|not found/i.test(error.message);
+  }
+  return /ENOENT|not found/i.test(error instanceof Error ? error.message : String(error));
+}
+
 export class PinStore implements vscode.Disposable {
   private readonly onDidChangeEmitter = new vscode.EventEmitter<void>();
   readonly onDidChange = this.onDidChangeEmitter.event;
 
-  private readonly tabChangeDisposable: vscode.Disposable;
-  private refreshScheduled = false;
-  private batchQueue: Promise<void> = Promise.resolve();
-  private focusCommandQueue: Promise<void> = Promise.resolve();
+  private readonly disposables: vscode.Disposable[] = [];
+  private readonly batchQueue = new OperationQueue();
+  private readonly focusQueue = new OperationQueue();
+
+  private refreshTimer: NodeJS.Timeout | undefined;
+  private persistScheduled = false;
+  private persistChain: Promise<void> = Promise.resolve();
+  private persistErrorShown = false;
+  private disposed = false;
+
   private applyingState = false;
   private refreshRequestedWhileApplying = false;
 
   private pinnedByKey = new Map<string, PinRecord>();
+  /** Keys of files that had a pinned tab during the previous refresh. */
+  private pinnedOpenKeys = new Set<string>();
   private cachedList: PinRecord[] = [];
   private cacheDirty = true;
 
+  /**
+   * Waiters resolved on the next tab-group change. Event-driven settling shortens the
+   * window during which a tab other than the user's is active, reducing the visible
+   * "flicker" of native pin/unpin batches.
+   */
+  private readonly tabChangeWaiters = new Set<() => void>();
+
+  private readonly readyPromise: Promise<void>;
+
   constructor(private readonly context: vscode.ExtensionContext) {
-    this.tabChangeDisposable = vscode.window.tabGroups.onDidChangeTabs(() => {
-      this.scheduleRefresh();
-    });
+    this.disposables.push(
+      vscode.window.tabGroups.onDidChangeTabs(() => {
+        this.notifyTabChange();
+        this.scheduleRefresh();
+      }),
+      // The Explorer menu needs the pinned state of the file the user is looking at, so the
+      // context keys are refreshed on every active-tab change, not only on pin-set changes.
+      vscode.window.tabGroups.onDidChangeTabGroups(() => this.updateContextKeys()),
+      vscode.window.onDidChangeActiveTextEditor(() => this.updateContextKeys()),
+      vscode.workspace.onDidDeleteFiles((event) => this.handleDeletedFiles(event.files)),
+      vscode.workspace.onDidRenameFiles((event) => this.handleRenamedFiles(event.files)),
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('pin-context.persistenceScope')) {
+          // Carry the in-memory state over to the newly selected storage scope.
+          this.schedulePersist();
+        }
+      })
+    );
+
+    this.context.subscriptions.push(
+      vscode.commands.registerCommand('pin-context.pinnedResourceState', (resource: unknown) =>
+        resource instanceof vscode.Uri && this.isPinned(resource)
+          ? 'Pin Context: pinned'
+          : undefined
+      )
+    );
+    // Explorer menu `when` clauses can test membership: `resource in
+    // pin-context.pinnedResources`. VS Code queries the registered command with the
+    // resource URI; a defined answer means the resource is "in" the collection.
+    void vscode.commands.executeCommand(
+      'setContext',
+      'pin-context.pinnedResources',
+      'pin-context.pinnedResourceState'
+    );
 
     this.initializeFromPersistedState();
     this.refreshFromTabs(true);
-    void this.restorePinnedTabs();
+    this.readyPromise = this.restorePinnedTabs().catch((error) => {
+      logger.error('Failed to restore pinned tabs', error);
+    });
   }
 
   dispose(): void {
-    this.tabChangeDisposable.dispose();
+    this.disposed = true;
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = undefined;
+    }
+    this.notifyTabChange();
+    this.disposables.forEach((d) => d.dispose());
     this.onDidChangeEmitter.dispose();
+  }
+
+  /** Resolves once the startup restore finished (never rejects). */
+  whenReady(): Promise<void> {
+    return this.readyPromise;
   }
 
   getPinnedCount(): number {
@@ -68,31 +175,49 @@ export class PinStore implements vscode.Disposable {
     return this.getPinnedItems().map((item) => item.uri);
   }
 
-  async pinCurrentEditor(): Promise<BatchOutcome> {
-    const uri = vscode.window.activeTextEditor?.document.uri;
-    if (!uri) {
-      vscode.window.showWarningMessage('No active editor to pin');
-      return { success: 0, failed: 0, skipped: 0, errors: [] };
+  isUriPinned(uri: vscode.Uri): boolean {
+    return this.pinnedByKey.has(toUriKey(uri));
+  }
+
+  /**
+   * Pinned in the UI sense: a pinned tab exists, or the file is in the pin list even while
+   * only a regular tab (or none) is open — exactly what `togglePin` would act on.
+   */
+  isPinned(uri: vscode.Uri): boolean {
+    const key = toUriKey(uri);
+    if (this.findTabs(uri).some((tab) => tab.isPinned)) {
+      return true;
     }
-    return this.pinUris([uri]);
+    return this.pinnedByKey.has(key);
+  }
+
+  async pinCurrentEditor(): Promise<BatchOutcome> {
+    const uri = this.getActiveUri();
+    if (!uri) {
+      void vscode.window.showWarningMessage(t('No active editor to pin'));
+      return emptyOutcome();
+    }
+    return this.pinUris([uri], { openIfClosed: true });
   }
 
   async unpinCurrentEditor(): Promise<BatchOutcome> {
-    const uri = vscode.window.activeTextEditor?.document.uri;
+    const uri = this.getActiveUri();
     if (!uri) {
-      vscode.window.showWarningMessage('No active editor to unpin');
-      return { success: 0, failed: 0, skipped: 0, errors: [] };
+      void vscode.window.showWarningMessage(t('No active editor to unpin'));
+      return emptyOutcome();
     }
     return this.unpinUris([uri]);
   }
 
   async togglePinCurrentEditor(): Promise<BatchOutcome> {
-    const uri = vscode.window.activeTextEditor?.document.uri;
+    const tab = this.getActiveTab();
+    const uri = this.getActiveUri();
     if (!uri) {
-      vscode.window.showWarningMessage('No active editor');
-      return { success: 0, failed: 0, skipped: 0, errors: [] };
+      void vscode.window.showWarningMessage(t('No active editor'));
+      return emptyOutcome();
     }
-    return this.isUriPinned(uri) ? this.unpinUris([uri]) : this.pinUris([uri]);
+    const pinned = tab && getPrimaryTabUri(tab) ? tab.isPinned : this.isUriPinned(uri);
+    return pinned ? this.unpinUris([uri]) : this.pinUris([uri], { openIfClosed: true });
   }
 
   async pinAllEditors(): Promise<BatchOutcome> {
@@ -111,27 +236,37 @@ export class PinStore implements vscode.Disposable {
     return this.unpinUris(targets);
   }
 
-  async pinEditorsByPattern(pattern: string): Promise<BatchOutcome> {
-    const matchingFiles = await vscode.workspace.findFiles(
-      pattern,
-      undefined,
-      this.getFindFilesLimit()
-    );
-    const matchingKeys = new Set(matchingFiles.map((uri) => toUriKey(uri)));
+  async pinEditorsByPattern(rawPattern: string): Promise<BatchOutcome> {
+    const pattern = rawPattern.trim();
+    if (!pattern) {
+      return emptyOutcome();
+    }
+
+    let matchingKeys = new Set<string>();
+    try {
+      const matchingFiles = await vscode.workspace.findFiles(
+        pattern,
+        undefined,
+        this.getFindFilesLimit()
+      );
+      matchingKeys = new Set(matchingFiles.map((uri) => toUriKey(uri)));
+    } catch (error) {
+      logger.warn(`findFiles failed for pattern "${pattern}": ${String(error)}`);
+    }
+
+    const matchesPattern = (uri: vscode.Uri): boolean => {
+      if (matchingKeys.has(toUriKey(uri))) {
+        return true;
+      }
+      const relative = vscode.workspace.asRelativePath(uri, false).replace(/\\/g, '/');
+      const options = { nocase: true, dot: true };
+      return minimatch(relative, pattern, options) || minimatch(uri.path, pattern, options);
+    };
 
     const targets = this.getOpenTabs()
-      .filter((tab) => {
-        const uri = getPrimaryTabUri(tab);
-        if (!uri || tab.isPinned) {
-          return false;
-        }
-        return (
-          matchingKeys.has(toUriKey(uri)) ||
-          minimatch(uri.path, pattern, { nocase: true, dot: true })
-        );
-      })
+      .filter((tab) => !tab.isPinned)
       .map((tab) => getPrimaryTabUri(tab))
-      .filter((uri): uri is vscode.Uri => Boolean(uri));
+      .filter((uri): uri is vscode.Uri => Boolean(uri) && matchesPattern(uri as vscode.Uri));
 
     return this.pinUris(targets);
   }
@@ -140,64 +275,188 @@ export class PinStore implements vscode.Disposable {
     return this.unpinUris([uri]);
   }
 
-  async pinUris(
-    uris: vscode.Uri[],
-    options?: { showProgress?: boolean; title?: string }
-  ): Promise<BatchOutcome> {
+  async pinUris(uris: vscode.Uri[], options?: PinOptions): Promise<BatchOutcome> {
     return this.applyPinState(uris, true, options);
   }
 
-  async unpinUris(
-    uris: vscode.Uri[],
-    options?: { showProgress?: boolean; title?: string }
-  ): Promise<BatchOutcome> {
+  async unpinUris(uris: vscode.Uri[], options?: PinOptions): Promise<BatchOutcome> {
     return this.applyPinState(uris, false, options);
   }
 
   syncWithOpenTabs(): void {
+    if (this.applyingState) {
+      this.refreshRequestedWhileApplying = true;
+      return;
+    }
     this.refreshFromTabs();
   }
 
-  private isUriPinned(uri: vscode.Uri): boolean {
-    return this.pinnedByKey.has(toUriKey(uri));
-  }
+  // ---------------------------------------------------------------------------
+  // Tab helpers
+  // ---------------------------------------------------------------------------
 
   private getOpenTabs(): vscode.Tab[] {
     return vscode.window.tabGroups.all.flatMap((group) => group.tabs);
   }
 
+  private getActiveTab(): vscode.Tab | undefined {
+    return vscode.window.tabGroups.activeTabGroup?.activeTab;
+  }
+
+  /** Works for text, notebook and custom editors (images, etc.), not only text editors. */
+  private getActiveUri(): vscode.Uri | undefined {
+    const tab = this.getActiveTab();
+    const fromTab = tab ? getPrimaryTabUri(tab) : undefined;
+    const uri = fromTab ?? vscode.window.activeTextEditor?.document.uri;
+    return uri && isTrackableUri(uri) ? uri : undefined;
+  }
+
+  private findTabs(uri: vscode.Uri): vscode.Tab[] {
+    const key = toUriKey(uri);
+    return this.getOpenTabs().filter((tab) => {
+      const tabUri = getPrimaryTabUri(tab);
+      return tabUri ? toUriKey(tabUri) === key : false;
+    });
+  }
+
+  private isActiveWithState(uri: vscode.Uri, shouldPin: boolean): boolean {
+    const tab = this.getActiveTab();
+    if (!tab) {
+      return false;
+    }
+    const tabUri = getPrimaryTabUri(tab);
+    return (
+      Boolean(tabUri) &&
+      toUriKey(tabUri as vscode.Uri) === toUriKey(uri) &&
+      tab.isPinned !== shouldPin
+    );
+  }
+
+  private captureActiveTab(): ActiveTabSnapshot | undefined {
+    const tab = this.getActiveTab();
+    const uri = tab ? getPrimaryTabUri(tab) : undefined;
+    if (!tab || !uri || !isTrackableUri(uri)) {
+      return undefined;
+    }
+    return { uri, viewColumn: tab.group.viewColumn };
+  }
+
+  private async restoreActiveTab(
+    original: ActiveTabSnapshot | undefined,
+    touched: boolean
+  ): Promise<void> {
+    if (!original || !touched) {
+      return;
+    }
+    const current = this.getActiveTab();
+    const currentUri = current ? getPrimaryTabUri(current) : undefined;
+    if (currentUri && toUriKey(currentUri) === toUriKey(original.uri)) {
+      return;
+    }
+    try {
+      await vscode.commands.executeCommand('vscode.open', original.uri, {
+        viewColumn: original.viewColumn,
+        preview: false
+      });
+    } catch (error) {
+      logger.debug(`Could not restore active editor: ${String(error)}`);
+    }
+  }
+
+  private async waitFor(
+    condition: () => boolean,
+    timeoutMs: number,
+    stepMs = 20
+  ): Promise<boolean> {
+    if (condition()) {
+      return true;
+    }
+
+    // Resolve as soon as the tab model changes instead of polling the full timeout.
+    // The interval is only a safety net for missed events.
+    return new Promise<boolean>((resolve) => {
+      let settled = false;
+      const finish = (result: boolean): void => {
+        if (settled) {
+          return;
+        }
+        settled = true;
+        clearTimeout(timeoutHandle);
+        clearInterval(intervalHandle);
+        this.tabChangeWaiters.delete(onChange);
+        resolve(result);
+      };
+      const onChange = (): void => finish(condition());
+      const intervalHandle = setInterval(() => {
+        if (condition()) {
+          finish(true);
+        }
+      }, stepMs);
+      const timeoutHandle = setTimeout(() => finish(condition()), timeoutMs);
+      this.tabChangeWaiters.add(onChange);
+    });
+  }
+
+  private notifyTabChange(): void {
+    for (const waiter of [...this.tabChangeWaiters]) {
+      waiter();
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // Syncing with the tab model
+  // ---------------------------------------------------------------------------
+
   private scheduleRefresh(): void {
+    if (this.disposed) {
+      return;
+    }
     if (this.applyingState) {
       this.refreshRequestedWhileApplying = true;
       return;
     }
-
-    if (this.refreshScheduled) {
+    if (this.refreshTimer) {
       return;
     }
-
-    this.refreshScheduled = true;
-
-    queueMicrotask(() => {
-      this.refreshScheduled = false;
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = undefined;
+      if (this.applyingState) {
+        this.refreshRequestedWhileApplying = true;
+        return;
+      }
       this.refreshFromTabs();
-    });
+    }, REFRESH_DEBOUNCE_MS);
   }
 
   private refreshFromTabs(forceEmit = false): void {
-    const next = new Map(this.pinnedByKey);
+    // A file can be open in several tabs (split view). It is "pinned" if any of them is.
+    const openState = new Map<string, { uri: vscode.Uri; pinned: boolean }>();
     for (const tab of this.getOpenTabs()) {
       const uri = getPrimaryTabUri(tab);
-      if (!uri) {
+      if (!uri || !isTrackableUri(uri)) {
         continue;
       }
       const key = toUriKey(uri);
-      if (tab.isPinned) {
-        next.set(key, toPinRecord(uri));
-      } else {
+      const previous = openState.get(key);
+      openState.set(key, { uri, pinned: tab.isPinned || (previous?.pinned ?? false) });
+    }
+
+    const next = new Map(this.pinnedByKey);
+    const nextPinnedOpen = new Set<string>();
+
+    for (const [key, state] of openState) {
+      if (state.pinned) {
+        nextPinnedOpen.add(key);
+        if (!next.has(key)) {
+          next.set(key, toPinRecord(state.uri));
+        }
+      } else if (this.pinnedOpenKeys.has(key)) {
+        // The tab used to be pinned and is not anymore: the user unpinned it.
+        // A tracked file that is merely re-opened as a regular tab keeps its record.
         next.delete(key);
       }
     }
+    this.pinnedOpenKeys = nextPinnedOpen;
 
     const changed = this.didPinnedSetChange(next);
     if (!changed && !forceEmit) {
@@ -206,8 +465,26 @@ export class PinStore implements vscode.Disposable {
 
     this.pinnedByKey = next;
     this.cacheDirty = true;
-    void this.persistPinnedUris();
+    this.schedulePersist();
+    this.updateContextKeys();
     this.onDidChangeEmitter.fire();
+  }
+
+  /**
+   * Exposes the state of the active tab to `when` clauses (`pin-context.isPinned`,
+   * `pin-context.hasActiveEditor`), so the Explorer/editor menus show a single contextual
+   * pin command instead of Pin / Unpin / Toggle side by side.
+   */
+  updateContextKeys(): void {
+    const activeTab = vscode.window.tabGroups.activeTabGroup?.activeTab;
+    const uri = activeTab ? getPrimaryTabUri(activeTab) : undefined;
+    const trackable = uri !== undefined && isTrackableUri(uri);
+    void vscode.commands.executeCommand(
+      'setContext',
+      'pin-context.isPinned',
+      trackable && this.isUriPinned(uri)
+    );
+    void vscode.commands.executeCommand('setContext', 'pin-context.hasActiveEditor', trackable);
   }
 
   private didPinnedSetChange(next: Map<string, PinRecord>): boolean {
@@ -222,229 +499,405 @@ export class PinStore implements vscode.Disposable {
     return false;
   }
 
-  private async persistPinnedUris(): Promise<void> {
-    const uris = [...this.pinnedByKey.values()].map((item) => item.uri.toString());
-    try {
-      await this.getPersistenceMemento().update(PERSISTED_PINS_KEY, uris);
-    } catch (error) {
-      console.error('[pin-context] Failed to persist pinned URIs', error);
-      void vscode.window.showErrorMessage('Failed to save pinned files');
+  // ---------------------------------------------------------------------------
+  // File system events
+  // ---------------------------------------------------------------------------
+
+  private handleDeletedFiles(files: readonly vscode.Uri[]): void {
+    const deletedKeys = files.map((uri) => toUriKey(uri));
+    const affected = [...this.pinnedByKey.values()].filter((record) =>
+      deletedKeys.some((deleted) => isSameOrNested(record.key, deleted))
+    );
+    if (affected.length > 0) {
+      this.removePinnedRecords(affected.map((record) => record.uri));
     }
   }
 
-  private async restorePinnedTabs(): Promise<void> {
-    const rawUris = this.getPersistenceMemento().get<string[]>(PERSISTED_PINS_KEY, []);
-    if (rawUris.length === 0) {
-      return;
+  private handleRenamedFiles(files: readonly { oldUri: vscode.Uri; newUri: vscode.Uri }[]): void {
+    let changed = false;
+    const next = new Map(this.pinnedByKey);
+
+    for (const { oldUri, newUri } of files) {
+      const oldKey = toUriKey(oldUri);
+      for (const record of [...next.values()]) {
+        if (!isSameOrNested(record.key, oldKey)) {
+          continue;
+        }
+        const suffix = record.uri.path.slice(oldUri.path.length);
+        const movedUri = newUri.with({ path: newUri.path + suffix });
+        next.delete(record.key);
+        const movedRecord = toPinRecord(movedUri);
+        next.set(movedRecord.key, movedRecord);
+        changed = true;
+      }
     }
 
-    const targets = rawUris
-      .map((value) => {
-        try {
-          return vscode.Uri.parse(value);
-        } catch {
-          return undefined;
-        }
-      })
-      .filter((uri): uri is vscode.Uri => Boolean(uri));
+    if (!changed) {
+      return;
+    }
+    this.pinnedByKey = next;
+    this.cacheDirty = true;
+    this.schedulePersist();
+    this.onDidChangeEmitter.fire();
+  }
 
-    this.replacePinnedRecords(targets);
+  // ---------------------------------------------------------------------------
+  // Persistence
+  // ---------------------------------------------------------------------------
+
+  private schedulePersist(): void {
+    if (this.persistScheduled || this.disposed) {
+      return;
+    }
+    this.persistScheduled = true;
+    // Writes are serialized, and each write snapshots the latest in-memory state.
+    this.persistChain = this.persistChain.then(async () => {
+      this.persistScheduled = false;
+      const uris = [...this.pinnedByKey.values()].map((item) => item.uri.toString());
+      try {
+        await this.getPersistenceMemento().update(PERSISTED_PINS_KEY, uris);
+      } catch (error) {
+        logger.error('Failed to persist pinned URIs', error);
+        if (!this.persistErrorShown) {
+          this.persistErrorShown = true;
+          void vscode.window.showErrorMessage(t('Pin Context: failed to save pinned files'));
+        }
+      }
+    });
+  }
+
+  /**
+   * Reads from the configured scope. When that scope has no pins key at all (not even an
+   * empty array), the other scope is read once so data stored before the default changed
+   * from `globalState` to `workspaceState` is not lost. The next persist writes to the
+   * configured scope, which completes the migration.
+   */
+  private readPersistedUris(): vscode.Uri[] {
+    const rawUris = this.readRawPersistedUris();
+    if (!Array.isArray(rawUris)) {
+      return [];
+    }
+    return rawUris
+      .filter((value): value is string => typeof value === 'string')
+      .map((value) => parseUri(value))
+      .filter((uri): uri is vscode.Uri => Boolean(uri) && isTrackableUri(uri as vscode.Uri));
+  }
+
+  private readRawPersistedUris(): unknown {
+    const scope = this.getPersistenceScope();
+    const preferred = this.getMemento(scope).get<unknown>(PERSISTED_PINS_KEY);
+    if (preferred !== undefined) {
+      return preferred;
+    }
+    const fallbackScope: PersistenceScope =
+      scope === 'workspaceState' ? 'globalState' : 'workspaceState';
+    return this.getMemento(fallbackScope).get<unknown>(PERSISTED_PINS_KEY);
+  }
+
+  private initializeFromPersistedState(): void {
+    this.replacePinnedRecords(this.readPersistedUris());
+  }
+
+  private async restorePinnedTabs(): Promise<void> {
+    const targets = this.readPersistedUris();
+    if (targets.length === 0) {
+      return;
+    }
 
     if (this.getRestoreBehavior() === 'reopenAndPin') {
       const reopenLimit = this.getRestoreReopenLimit();
       const reopenTargets = targets.slice(0, reopenLimit);
       const remainder = targets.length - reopenTargets.length;
       if (reopenTargets.length > 0) {
-        await this.pinUris(reopenTargets, { showProgress: false, title: 'Restoring pinned files' });
+        await this.pinUris(reopenTargets, {
+          showProgress: false,
+          title: t('Restoring pinned files'),
+          openIfClosed: true
+        });
       }
       if (remainder > 0) {
-        this.debugLog(`Restore limited to ${reopenLimit} files, kept ${remainder} in tree only.`);
+        logger.debug(`Restore limited to ${reopenLimit} files, kept ${remainder} in tree only.`);
         void vscode.window.showInformationMessage(
-          `Restored ${reopenTargets.length} pinned tab(s). ${remainder} remain in sidebar and will be pinned when opened.`
+          `Restored ${reopenTargets.length} pinned tab(s). ${remainder} more remain in the sidebar.`
         );
       }
-    } else {
-      this.refreshFromTabs(true);
+    }
+
+    await this.pruneMissingFiles();
+  }
+
+  /** Drops records of files that were deleted while the extension was not running. */
+  private async pruneMissingFiles(): Promise<void> {
+    const openKeys = new Set(
+      this.getOpenTabs()
+        .map((tab) => getPrimaryTabUri(tab))
+        .filter((uri): uri is vscode.Uri => Boolean(uri))
+        .map((uri) => toUriKey(uri))
+    );
+    const candidates = [...this.pinnedByKey.values()].filter(
+      (record) => record.uri.scheme === 'file' && !openKeys.has(record.key)
+    );
+
+    const missing: vscode.Uri[] = [];
+    for (const chunk of this.chunk(candidates, 20)) {
+      await Promise.all(
+        chunk.map(async (record) => {
+          try {
+            await vscode.workspace.fs.stat(record.uri);
+          } catch (error) {
+            if (isFileNotFound(error)) {
+              missing.push(record.uri);
+            }
+          }
+        })
+      );
+    }
+
+    if (missing.length > 0 && !this.disposed) {
+      logger.debug(`Removing ${missing.length} pinned file(s) that no longer exist`);
+      this.removePinnedRecords(missing);
     }
   }
+
+  // ---------------------------------------------------------------------------
+  // Applying pin / unpin
+  // ---------------------------------------------------------------------------
 
   private async applyPinState(
     uris: vscode.Uri[],
     shouldPin: boolean,
-    options?: {
-      showProgress?: boolean;
-      title?: string;
-    }
+    options?: PinOptions
   ): Promise<BatchOutcome> {
-    const unique = [...new Map(uris.map((uri) => [toUriKey(uri), uri])).values()];
+    const unique = [
+      ...new Map(
+        uris.filter((uri) => isTrackableUri(uri)).map((uri) => [toUriKey(uri), uri])
+      ).values()
+    ];
     if (unique.length === 0) {
-      return { success: 0, failed: 0, skipped: 0, errors: [] };
+      return emptyOutcome();
     }
 
-    return this.enqueueBatch(async () => {
+    return this.batchQueue.runExclusive(async () => {
       if (shouldPin) {
         this.addPinnedRecords(unique);
       }
-      const execution = async (
-        reportProgress?: vscode.Progress<{ message?: string; increment?: number }>
-      ) => {
-        this.applyingState = true;
-        let success = 0;
-        let failed = 0;
-        let skipped = 0;
-        const errors: string[] = [];
-        let processed = 0;
-
-        const batches = this.chunkUris(unique, this.getBatchSize());
-        for (const batch of batches) {
-          const results = await Promise.allSettled(
-            batch.map((uri) => this.applyPinStateForUri(uri, shouldPin))
-          );
-          for (const result of results) {
-            if (result.status === 'rejected') {
-              failed += 1;
-              errors.push(String(result.reason));
-              continue;
-            }
-
-            if (result.value.status === 'success') {
-              success += 1;
-            } else if (result.value.status === 'failed') {
-              failed += 1;
-              if (result.value.error) {
-                errors.push(result.value.error);
-              }
-            } else {
-              skipped += 1;
-            }
-            processed += 1;
-            if (reportProgress) {
-              const percent = Math.round((processed / unique.length) * 100);
-              reportProgress.report({
-                increment: 100 / unique.length,
-                message: `${processed}/${unique.length} (${percent}%)`
-              });
-            }
-          }
-        }
-
-        if (!shouldPin) {
-          this.removePinnedRecords(unique);
-        }
-        this.applyingState = false;
-        this.refreshFromTabs(true);
-        if (this.refreshRequestedWhileApplying) {
-          this.refreshRequestedWhileApplying = false;
-          this.scheduleRefresh();
-        }
-        return { success, failed, skipped, errors };
-      };
 
       const showProgress = options?.showProgress ?? unique.length >= 20;
       if (!showProgress) {
-        return execution();
+        return this.executeBatch(unique, shouldPin, options);
       }
 
       return vscode.window.withProgress(
         {
           location: vscode.ProgressLocation.Notification,
-          title: options?.title ?? (shouldPin ? 'Pinning files' : 'Unpinning files')
+          title: options?.title ?? (shouldPin ? t('Pinning files') : t('Unpinning files'))
         },
         async (progress) => {
-          progress.report({ message: `Processing ${unique.length} item(s)...` });
-          const result = await execution(progress);
-          progress.report({ message: 'Finalizing...' });
+          progress.report({ message: t('Processing {0} item(s)...', unique.length) });
+          const result = await this.executeBatch(unique, shouldPin, options, progress);
+          progress.report({ message: t('Finalizing...') });
           return result;
         }
       );
     });
   }
 
+  private async executeBatch(
+    unique: vscode.Uri[],
+    shouldPin: boolean,
+    options: PinOptions | undefined,
+    progress?: vscode.Progress<{ message?: string; increment?: number }>
+  ): Promise<BatchOutcome> {
+    const outcome = emptyOutcome();
+    const recordsToDrop: vscode.Uri[] = [];
+    const original = this.captureActiveTab();
+    const tracker = { touched: false };
+    let processed = 0;
+
+    // Processing order affects visible flicker: files that need no tab switch go first,
+    // then the active tab, and only afterwards the ones that must be focused. This keeps
+    // the number of tab switches (and the time a foreign tab is active) to a minimum.
+    const ordered = this.orderForMinimalFocusChanges(unique, shouldPin);
+
+    this.applyingState = true;
+    try {
+      for (const batch of this.chunk(ordered, this.getBatchSize())) {
+        const results = await Promise.allSettled(
+          batch.map((uri) =>
+            this.applyPinStateForUri(uri, shouldPin, options?.openIfClosed, tracker)
+          )
+        );
+
+        results.forEach((result, index) => {
+          const uri = batch[index];
+          processed += 1;
+
+          const value: UriResult =
+            result.status === 'rejected'
+              ? { status: 'failed', error: this.formatError(uri, result.reason) }
+              : result.value;
+
+          if (value.status === 'success') {
+            outcome.success += 1;
+          } else if (value.status === 'failed') {
+            outcome.failed += 1;
+            if (value.error) {
+              outcome.errors.push(value.error);
+            }
+          } else {
+            outcome.skipped += 1;
+          }
+
+          if (value.missing || (!shouldPin && value.status !== 'failed')) {
+            recordsToDrop.push(uri);
+          }
+
+          progress?.report({
+            increment: 100 / unique.length,
+            message: t(
+              '{0}/{1} ({2}%)',
+              processed,
+              unique.length,
+              Math.round((processed / unique.length) * 100)
+            )
+          });
+        });
+      }
+    } finally {
+      // Must always be reset, otherwise tab tracking would stay frozen after one failure.
+      this.applyingState = false;
+    }
+
+    if (recordsToDrop.length > 0) {
+      this.removePinnedRecords(recordsToDrop);
+    }
+    await this.restoreActiveTab(original, tracker.touched);
+    this.refreshFromTabs(true);
+
+    if (this.refreshRequestedWhileApplying) {
+      this.refreshRequestedWhileApplying = false;
+      this.scheduleRefresh();
+    }
+    return outcome;
+  }
+
+  /**
+   * Reorders targets so the batch switches tabs as little as possible:
+   * 1) tabs that already have the wanted state (no-op / skipped),
+   * 2) the currently active tab,
+   * 3) everything else (each requires focusing its tab).
+   */
+  private orderForMinimalFocusChanges(uris: vscode.Uri[], shouldPin: boolean): vscode.Uri[] {
+    const activeUri = this.getActiveUri();
+    const activeKey = activeUri ? toUriKey(activeUri) : undefined;
+
+    const rank = (uri: vscode.Uri): number => {
+      const key = toUriKey(uri);
+      const tabs = this.findTabs(uri);
+      const needsSwitch = tabs.length === 0 || tabs.every((tab) => tab.isPinned !== shouldPin);
+      if (!needsSwitch) {
+        return 0;
+      }
+      return key === activeKey ? 1 : 2;
+    };
+
+    // Stable sort: preserve the caller's order within the same rank.
+    return [...uris]
+      .map((uri, index) => ({ uri, index, rank: rank(uri) }))
+      .sort((a, b) => a.rank - b.rank || a.index - b.index)
+      .map((entry) => entry.uri);
+  }
+
   private async applyPinStateForUri(
     uri: vscode.Uri,
-    shouldPin: boolean
-  ): Promise<{ status: 'success' | 'failed' | 'skipped'; error?: string }> {
-    const tab = this.findTabByUri(uri);
-    if (!tab) {
-      if (shouldPin && this.getRestoreBehavior() === 'reopenAndPin') {
-        return this.openAndToggleUri(uri, shouldPin);
+    shouldPin: boolean,
+    openIfClosed: boolean | undefined,
+    tracker: { touched: boolean }
+  ): Promise<UriResult> {
+    const tabs = this.findTabs(uri);
+
+    if (tabs.length === 0) {
+      const shouldOpen = openIfClosed ?? this.getRestoreBehavior() === 'reopenAndPin';
+      if (!shouldPin || !shouldOpen) {
+        return { status: 'skipped' };
       }
+      return this.openAndToggleUri(uri, true, undefined, tracker);
+    }
+
+    const target = tabs.find((tab) => tab.isPinned !== shouldPin);
+    if (!target) {
       return { status: 'skipped' };
     }
-    if (tab.isPinned === shouldPin) {
-      return { status: 'skipped' };
+    return this.openAndToggleUri(uri, shouldPin, target, tracker);
+  }
+
+  private async checkReopenable(uri: vscode.Uri): Promise<UriResult | undefined> {
+    if (uri.scheme !== 'file') {
+      return undefined;
     }
-    return this.openAndToggleUri(uri, shouldPin);
+    try {
+      const stat = await vscode.workspace.fs.stat(uri);
+      if (stat.type & vscode.FileType.Directory) {
+        return { status: 'skipped', missing: true };
+      }
+    } catch (error) {
+      if (isFileNotFound(error)) {
+        return { status: 'skipped', missing: true };
+      }
+    }
+    return undefined;
   }
 
   private async openAndToggleUri(
     uri: vscode.Uri,
-    shouldPin: boolean
-  ): Promise<{ status: 'success' | 'failed'; error?: string }> {
+    shouldPin: boolean,
+    tab: vscode.Tab | undefined,
+    tracker: { touched: boolean }
+  ): Promise<UriResult> {
     const command = shouldPin ? 'workbench.action.pinEditor' : 'workbench.action.unpinEditor';
     try {
-      await this.runFocusCommand(async () => {
-        const activeUri = vscode.window.activeTextEditor?.document.uri;
-        if (!activeUri || toUriKey(activeUri) !== toUriKey(uri)) {
-          await vscode.window.showTextDocument(uri, { preview: false, preserveFocus: true });
+      if (!tab) {
+        const blocked = await this.checkReopenable(uri);
+        if (blocked) {
+          return blocked;
         }
+      }
+
+      await this.focusQueue.runExclusive(async () => {
+        // The pin command always acts on the *active* editor, so it must be the right one.
+        if (!this.isActiveWithState(uri, shouldPin)) {
+          await vscode.commands.executeCommand('vscode.open', uri, {
+            viewColumn: tab?.group.viewColumn,
+            preview: false,
+            preserveFocus: false
+          });
+          tracker.touched = true;
+
+          const active = await this.waitFor(
+            () => this.isActiveWithState(uri, shouldPin),
+            ACTIVATION_TIMEOUT_MS
+          );
+          if (!active) {
+            throw new Error('the editor did not become active');
+          }
+        }
+
         await vscode.commands.executeCommand(command);
+        await this.waitFor(
+          () => this.findTabs(uri).some((candidate) => candidate.isPinned === shouldPin),
+          STATE_SETTLE_TIMEOUT_MS
+        );
       });
       return { status: 'success' };
     } catch (error) {
-      this.debugLog(`Failed ${shouldPin ? 'pin' : 'unpin'} for ${uri.fsPath}: ${String(error)}`);
+      logger.debug(`Failed ${shouldPin ? 'pin' : 'unpin'} for ${uri.fsPath}: ${String(error)}`);
       return { status: 'failed', error: this.formatError(uri, error) };
     }
   }
 
-  private findTabByUri(uri: vscode.Uri): vscode.Tab | undefined {
-    const key = toUriKey(uri);
-    return this.getOpenTabs().find((tab) => {
-      const tabUri = getPrimaryTabUri(tab);
-      return tabUri ? toUriKey(tabUri) === key : false;
-    });
-  }
-
-  private runFocusCommand<T>(operation: () => Promise<T>): Promise<T> {
-    const previous = this.focusCommandQueue;
-    let release!: () => void;
-    this.focusCommandQueue = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-
-    return previous.then(operation).finally(() => {
-      release();
-    });
-  }
-
-  private async enqueueBatch<T>(operation: () => Promise<T>): Promise<T> {
-    const previous = this.batchQueue;
-    let release!: () => void;
-    this.batchQueue = new Promise<void>((resolve) => {
-      release = resolve;
-    });
-
-    await previous;
-    try {
-      return await operation();
-    } finally {
-      release();
-    }
-  }
-
-  private initializeFromPersistedState(): void {
-    const rawUris = this.getPersistenceMemento().get<string[]>(PERSISTED_PINS_KEY, []);
-    const uris = rawUris
-      .map((value) => {
-        try {
-          return vscode.Uri.parse(value);
-        } catch {
-          return undefined;
-        }
-      })
-      .filter((uri): uri is vscode.Uri => Boolean(uri));
-    this.replacePinnedRecords(uris);
-  }
+  // ---------------------------------------------------------------------------
+  // In-memory records
+  // ---------------------------------------------------------------------------
 
   private replacePinnedRecords(uris: vscode.Uri[]): void {
     const next = new Map<string, PinRecord>();
@@ -457,7 +910,7 @@ export class PinStore implements vscode.Disposable {
     }
     this.pinnedByKey = next;
     this.cacheDirty = true;
-    void this.persistPinnedUris();
+    this.schedulePersist();
     this.onDidChangeEmitter.fire();
   }
 
@@ -466,15 +919,15 @@ export class PinStore implements vscode.Disposable {
     for (const uri of uris) {
       const record = toPinRecord(uri);
       if (!this.pinnedByKey.has(record.key)) {
+        this.pinnedByKey.set(record.key, record);
         changed = true;
       }
-      this.pinnedByKey.set(record.key, record);
     }
     if (!changed) {
       return;
     }
     this.cacheDirty = true;
-    void this.persistPinnedUris();
+    this.schedulePersist();
     this.onDidChangeEmitter.fire();
   }
 
@@ -487,65 +940,67 @@ export class PinStore implements vscode.Disposable {
       return;
     }
     this.cacheDirty = true;
-    void this.persistPinnedUris();
+    this.schedulePersist();
     this.onDidChangeEmitter.fire();
   }
 
+  // ---------------------------------------------------------------------------
+  // Settings
+  // ---------------------------------------------------------------------------
+
+  private getPersistenceMemento(): vscode.Memento {
+    return this.getMemento(this.getPersistenceScope());
+  }
+
   private getPersistenceScope(): PersistenceScope {
-    const config = vscode.workspace.getConfiguration('pin-context');
-    return config.get<PersistenceScope>('persistenceScope', 'globalState');
+    return vscode.workspace
+      .getConfiguration('pin-context')
+      .get<PersistenceScope>('persistenceScope', 'workspaceState');
+  }
+
+  private getMemento(scope: PersistenceScope): vscode.Memento {
+    return scope === 'workspaceState' ? this.context.workspaceState : this.context.globalState;
   }
 
   private getRestoreBehavior(): RestoreBehavior {
-    const config = vscode.workspace.getConfiguration('pin-context');
-    return config.get<RestoreBehavior>('restoreBehavior', 'keepInTree');
-  }
-
-  private getPersistenceMemento(): vscode.Memento {
-    return this.getPersistenceScope() === 'workspaceState'
-      ? this.context.workspaceState
-      : this.context.globalState;
+    return vscode.workspace
+      .getConfiguration('pin-context')
+      .get<RestoreBehavior>('restoreBehavior', 'keepInTree');
   }
 
   private getBatchSize(): number {
-    const config = vscode.workspace.getConfiguration('pin-context');
-    const configured = config.get<number>('batchSize', DEFAULT_BATCH_SIZE);
-    return Math.max(1, Math.min(20, configured));
+    const configured = vscode.workspace
+      .getConfiguration('pin-context')
+      .get<number>('batchSize', DEFAULT_BATCH_SIZE);
+    return Math.max(1, Math.min(20, Number(configured) || DEFAULT_BATCH_SIZE));
   }
 
   private getFindFilesLimit(): number {
-    const config = vscode.workspace.getConfiguration('pin-context');
-    const configured = config.get<number>('findFilesMaxResults', DEFAULT_FIND_FILES_LIMIT);
-    return Math.max(100, Math.min(10000, configured));
+    const configured = vscode.workspace
+      .getConfiguration('pin-context')
+      .get<number>('findFilesMaxResults', DEFAULT_FIND_FILES_LIMIT);
+    return Math.max(100, Math.min(10000, Number(configured) || DEFAULT_FIND_FILES_LIMIT));
   }
 
   private getRestoreReopenLimit(): number {
-    const config = vscode.workspace.getConfiguration('pin-context');
-    const configured = config.get<number>('restoreReopenLimit', DEFAULT_RESTORE_REOPEN_LIMIT);
-    return Math.max(0, Math.min(500, configured));
+    const configured = vscode.workspace
+      .getConfiguration('pin-context')
+      .get<number>('restoreReopenLimit', DEFAULT_RESTORE_REOPEN_LIMIT);
+    const value = Number.isFinite(Number(configured))
+      ? Number(configured)
+      : DEFAULT_RESTORE_REOPEN_LIMIT;
+    return Math.max(0, Math.min(500, value));
   }
 
-  private isDebugEnabled(): boolean {
-    const config = vscode.workspace.getConfiguration('pin-context');
-    return config.get<boolean>('debug', false);
-  }
-
-  private chunkUris(uris: vscode.Uri[], chunkSize: number): vscode.Uri[][] {
-    const chunks: vscode.Uri[][] = [];
-    for (let index = 0; index < uris.length; index += chunkSize) {
-      chunks.push(uris.slice(index, index + chunkSize));
+  private chunk<T>(items: T[], size: number): T[][] {
+    const chunks: T[][] = [];
+    for (let index = 0; index < items.length; index += size) {
+      chunks.push(items.slice(index, index + size));
     }
     return chunks;
   }
 
   private formatError(uri: vscode.Uri, error: unknown): string {
     return `${uri.fsPath}: ${error instanceof Error ? error.message : String(error)}`;
-  }
-
-  private debugLog(message: string): void {
-    if (!this.isDebugEnabled()) {
-      return;
-    }
-    console.log(`[pin-context] ${message}`);
   }
 }

@@ -1,25 +1,24 @@
 import * as vscode from 'vscode';
+import { t } from '../l10n';
 
-export class StatusBarManager {
-  private statusBarItem: vscode.StatusBarItem;
+export class StatusBarManager implements vscode.Disposable {
+  private readonly statusBarItem: vscode.StatusBarItem;
   private lastText = '';
+  private lastTooltip = '';
   private isVisible = false;
 
   constructor() {
     this.statusBarItem = vscode.window.createStatusBarItem(vscode.StatusBarAlignment.Right, 100);
     this.statusBarItem.command = 'pin-context.togglePinCurrentEditor';
-    this.statusBarItem.tooltip = 'Pin Context\nClick to toggle pin current editor';
   }
 
-  update(pinnedCount: number): void {
-    const config = vscode.workspace.getConfiguration('pin-context');
-    const showInStatusBar = config.get<boolean>('showPinnedCountInStatusBar', true);
+  update(pinnedCount: number, activeContextName?: string): void {
+    const showInStatusBar = vscode.workspace
+      .getConfiguration('pin-context')
+      .get<boolean>('showPinnedCountInStatusBar', true);
 
     if (!showInStatusBar) {
-      if (this.isVisible) {
-        this.statusBarItem.hide();
-        this.isVisible = false;
-      }
+      this.hide();
       return;
     }
 
@@ -28,15 +27,30 @@ export class StatusBarManager {
       this.statusBarItem.text = nextText;
       this.lastText = nextText;
     }
+
+    const nextTooltip = [
+      t('Pin Context'),
+      activeContextName ? `Active context: ${activeContextName}` : undefined,
+      'Click to toggle pin on the current editor'
+    ]
+      .filter(Boolean)
+      .join('\n');
+    if (nextTooltip !== this.lastTooltip) {
+      this.statusBarItem.tooltip = nextTooltip;
+      this.lastTooltip = nextTooltip;
+    }
+
     if (!this.isVisible) {
       this.statusBarItem.show();
       this.isVisible = true;
     }
   }
 
-  show(): void {
-    this.statusBarItem.show();
-    this.isVisible = true;
+  hide(): void {
+    if (this.isVisible) {
+      this.statusBarItem.hide();
+      this.isVisible = false;
+    }
   }
 
   dispose(): void {

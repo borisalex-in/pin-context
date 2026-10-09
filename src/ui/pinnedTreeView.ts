@@ -1,9 +1,25 @@
 import * as vscode from 'vscode';
+import { t } from '../l10n';
 import * as path from 'path';
 import { ContextStore } from '../stores/contextStore';
 import { ContextTimelineEntry, PinContext } from '../types';
 import { PinStore } from '../stores/pinStore';
-import { PinRecord } from '../utils/tabUtils';
+import { PinRecord, isTrackableUri, parseUri } from '../utils/tabUtils';
+
+type ViewMode = 'tree' | 'list';
+
+const INTERNAL_DRAG_MIME = 'application/vnd.code.tree.pin-context.pinnedView';
+const REFRESH_DEBOUNCE_MS = 40;
+const MAX_PAYLOAD_DEPTH = 6;
+
+function openPinnedCommand(uri: vscode.Uri): vscode.Command {
+  // Opens the file and pins its tab again. A plain `vscode.open` left the tab unpinned.
+  return {
+    command: 'pin-context.openPinnedFile',
+    title: t('Open Pinned File'),
+    arguments: [uri]
+  };
+}
 
 export class PinnedTreeItem extends vscode.TreeItem {
   constructor(
@@ -21,10 +37,12 @@ export class PinnedFolderItem extends PinnedTreeItem {
     public readonly folderPath: string,
     public readonly fileCount: number
   ) {
-    const folderName = path.basename(folderPath);
-    super(folderName, vscode.TreeItemCollapsibleState.Expanded);
+    super(path.basename(folderPath) || folderPath, vscode.TreeItemCollapsibleState.Expanded);
 
-    this.description = `${fileCount} file${fileCount !== 1 ? 's' : ''}`;
+    const relative = vscode.workspace.asRelativePath(folderPath);
+    const count = t('{0} files', fileCount);
+    this.id = `pin-folder:${folderPath}`;
+    this.description = relative !== path.basename(folderPath) ? `${count} · ${relative}` : count;
     this.iconPath = new vscode.ThemeIcon('folder');
     this.tooltip = folderPath;
     this.contextValue = 'pinnedFolder';
@@ -38,16 +56,12 @@ export class PinnedFileItem extends PinnedTreeItem {
   ) {
     super(fileName, vscode.TreeItemCollapsibleState.None, uri);
 
+    this.id = `pin-file:${uri.toString()}`;
     this.iconPath = vscode.ThemeIcon.File;
     this.tooltip = uri.fsPath;
     this.resourceUri = uri;
     this.contextValue = 'pinnedFile';
-
-    this.command = {
-      command: 'vscode.open',
-      title: 'Open File',
-      arguments: [uri]
-    };
+    this.command = openPinnedCommand(uri);
   }
 }
 
@@ -59,58 +73,58 @@ export class PinnedListItem extends vscode.TreeItem {
   ) {
     super(label, vscode.TreeItemCollapsibleState.None);
 
+    this.id = `pin-list-file:${uri.toString()}`;
     this.iconPath = vscode.ThemeIcon.File;
     this.tooltip = uri.fsPath;
     this.resourceUri = uri;
     this.contextValue = 'pinnedFile';
     this.description = path.basename(folderPath);
-
-    this.command = {
-      command: 'vscode.open',
-      title: 'Open File',
-      arguments: [uri]
-    };
+    this.command = openPinnedCommand(uri);
   }
 }
 
 class EmptyPinnedItem extends vscode.TreeItem {
   constructor() {
-    super('No pinned files', vscode.TreeItemCollapsibleState.None);
+    super(t('No pinned files'), vscode.TreeItemCollapsibleState.None);
+    this.id = 'pin-empty';
     this.contextValue = 'pinnedEmpty';
     this.iconPath = new vscode.ThemeIcon('info');
-    this.description = 'Pin files to see them here';
+    this.description = t('Pin files to see them here');
     this.command = {
       command: 'pin-context.pinCurrentEditor',
-      title: 'Pin Current Editor'
+      title: t('Pin Current Editor')
     };
   }
 }
 
 class EmptyContextsItem extends vscode.TreeItem {
   constructor() {
-    super('No contexts yet', vscode.TreeItemCollapsibleState.None);
+    super(t('No contexts yet'), vscode.TreeItemCollapsibleState.None);
+    this.id = 'contexts-empty';
     this.contextValue = 'contextsEmpty';
     this.iconPath = new vscode.ThemeIcon('lightbulb');
-    this.description = 'Save current tabs and switch instantly';
-    this.tooltip =
-      'Save your current pinned tabs as a context and restore them instantly when switching tasks.';
+    this.description = t('Save current tabs and switch instantly');
+    this.tooltip = t(
+      'Save your current pinned tabs as a context and restore them instantly when switching tasks.'
+    );
     this.command = {
       command: 'pin-context.createContext',
-      title: 'Create Context'
+      title: t('Create Context')
     };
   }
 }
 
 class SavePinnedAsContextHintItem extends vscode.TreeItem {
   constructor() {
-    super('Turn pinned files into a context', vscode.TreeItemCollapsibleState.None);
+    super(t('Turn pinned files into a context'), vscode.TreeItemCollapsibleState.None);
+    this.id = 'contexts-hint';
     this.contextValue = 'contextsHint';
     this.iconPath = new vscode.ThemeIcon('save');
-    this.description = 'Capture this setup for fast switching';
-    this.tooltip = 'Create a context now to switch back to this exact set of tabs later.';
+    this.description = t('Capture this setup for fast switching');
+    this.tooltip = t('Create a context now to switch back to this exact set of tabs later.');
     this.command = {
       command: 'pin-context.createContext',
-      title: 'Create Context'
+      title: t('Create Context')
     };
   }
 }
@@ -121,23 +135,35 @@ class ContextSectionItem extends vscode.TreeItem {
     public readonly section: 'active' | 'contexts' | 'timeline' | 'pinnedFiles'
   ) {
     super(label, vscode.TreeItemCollapsibleState.Expanded);
+    this.id = `section:${section}`;
     this.contextValue = `contextSection:${section}`;
     this.iconPath = new vscode.ThemeIcon('symbol-folder');
   }
 }
 
-class ContextItem extends vscode.TreeItem {
+export class ContextItem extends vscode.TreeItem {
   constructor(
     public readonly context: PinContext,
     active: boolean
   ) {
     super(context.name, vscode.TreeItemCollapsibleState.None);
-    this.description = active ? 'Active' : context.source;
-    this.contextValue = 'pinContext';
+
+    const parts: string[] = [];
+    parts.push(active ? t('Active') : context.source);
+    if (context.source === 'git' && (context.changed || context.staged)) {
+      parts.push(`changed: ${context.changed ?? 0}, staged: ${context.staged ?? 0}`);
+    }
+
+    this.id = `context:${context.id}`;
+    this.description = parts.join(' · ');
+    this.tooltip = `${context.name}\n${t('{0} pinned file(s)', context.pinnedUris.length)}`;
+    // Git contexts cannot be renamed or deleted, so they get a different contextValue
+    // that the menus can target.
+    this.contextValue = context.source === 'git' ? 'pinContextGit' : 'pinContext';
     this.iconPath = new vscode.ThemeIcon(active ? 'check' : 'bookmark');
     this.command = {
       command: 'pin-context.switchContextById',
-      title: 'Switch Context',
+      title: t('Switch Context'),
       arguments: [context.id]
     };
   }
@@ -149,6 +175,7 @@ class TimelineHeaderItem extends vscode.TreeItem {
     label: string
   ) {
     super(label, vscode.TreeItemCollapsibleState.Expanded);
+    this.id = `timeline:${key}`;
     this.contextValue = 'timelineHeader';
     this.iconPath = new vscode.ThemeIcon('history');
   }
@@ -157,31 +184,29 @@ class TimelineHeaderItem extends vscode.TreeItem {
 class TimelineEntryItem extends vscode.TreeItem {
   constructor(public readonly entry: ContextTimelineEntry) {
     super(entry.contextName, vscode.TreeItemCollapsibleState.None);
+    this.id = `timeline-entry:${entry.id}`;
     this.description = entry.action;
     this.tooltip = new Date(entry.timestamp).toLocaleString();
     this.contextValue = 'timelineEntry';
     this.command = {
       command: 'pin-context.switchContextById',
-      title: 'Switch Context',
+      title: t('Switch Context'),
       arguments: [entry.contextId]
     };
   }
 }
 
 class PinnedTreeDragAndDropController implements vscode.TreeDragAndDropController<vscode.TreeItem> {
-  readonly dragMimeTypes = ['application/vnd.code.tree.pin-context.pinnedView'];
+  readonly dragMimeTypes = [INTERNAL_DRAG_MIME];
   readonly dropMimeTypes = [
     'text/uri-list',
     'text/plain',
     'application/vnd.code.tree.explorer',
-    'application/vnd.code.tree.pin-context.pinnedView',
+    INTERNAL_DRAG_MIME,
     'application/vnd.code.files'
   ];
 
-  constructor(
-    private readonly pinStore: PinStore,
-    private readonly contextStore: ContextStore
-  ) {}
+  constructor(private readonly pinStore: PinStore) {}
 
   async handleDrag(
     source: readonly vscode.TreeItem[],
@@ -196,14 +221,11 @@ class PinnedTreeDragAndDropController implements vscode.TreeDragAndDropControlle
       return;
     }
 
-    dataTransfer.set(
-      'application/vnd.code.tree.pin-context.pinnedView',
-      new vscode.DataTransferItem(JSON.stringify(uris))
-    );
+    dataTransfer.set(INTERNAL_DRAG_MIME, new vscode.DataTransferItem(JSON.stringify(uris)));
   }
 
   async handleDrop(
-    target: vscode.TreeItem | undefined,
+    _target: vscode.TreeItem | undefined,
     dataTransfer: vscode.DataTransfer
   ): Promise<void> {
     const uris = await this.extractUris(dataTransfer);
@@ -211,101 +233,76 @@ class PinnedTreeDragAndDropController implements vscode.TreeDragAndDropControlle
       return;
     }
 
-    await this.pinStore.pinUris(uris, { showProgress: false });
-    const activeContext = this.contextStore.getActiveContext();
-    if (activeContext) {
-      await this.contextStore.saveCurrentPinsToContext(activeContext.id);
+    // Context sync happens automatically through pinStore events; the explicit
+    // "save to context" call that used to be here only spammed the timeline.
+    const result = await this.pinStore.pinUris(uris, { showProgress: false, openIfClosed: true });
+
+    if (result.success === 0 && result.failed === 0) {
+      void vscode.window.showInformationMessage(
+        t('Nothing to pin (folders and missing files are skipped)')
+      );
+      return;
     }
-    void vscode.window.showInformationMessage(`Pinned ${uris.length} item(s) via drag and drop`);
+    const failed = result.failed > 0 ? t(', {0} failed', result.failed) : '';
+    void vscode.window.showInformationMessage(t('Pinned {0} item(s){1}', result.success, failed));
   }
 
   private async extractUris(dataTransfer: vscode.DataTransfer): Promise<vscode.Uri[]> {
     const uriSet = new Map<string, vscode.Uri>();
-    const uriList = dataTransfer.get('text/uri-list');
-    if (uriList) {
-      const value = await uriList.asString();
-      for (const uri of this.parseUriList(value)) {
-        if (uri.scheme === 'file') {
-          uriSet.set(uri.toString(), uri);
-        }
+    const add = (uri: vscode.Uri | undefined): void => {
+      if (uri && uri.scheme === 'file' && isTrackableUri(uri)) {
+        uriSet.set(uri.toString(), uri);
       }
+    };
+
+    const readString = async (mime: string): Promise<string> => {
+      const item = dataTransfer.get(mime);
+      if (!item) {
+        return '';
+      }
+      try {
+        const value = await item.asString();
+        if (value) {
+          return value;
+        }
+      } catch {
+        // fall through to the raw value below
+      }
+      const raw = (item as { value?: unknown }).value;
+      return typeof raw === 'string' ? raw : '';
+    };
+
+    for (const uri of this.parseUriList(await readString('text/uri-list'))) {
+      add(uri);
     }
 
-    const internal = dataTransfer.get('application/vnd.code.tree.pin-context.pinnedView');
+    const internal = await readString(INTERNAL_DRAG_MIME);
     if (internal) {
-      const value = await internal.asString();
       try {
-        const items = JSON.parse(value);
+        const items: unknown = JSON.parse(internal);
         if (Array.isArray(items)) {
           for (const raw of items) {
-            if (typeof raw !== 'string') {
-              continue;
+            if (typeof raw === 'string') {
+              add(parseUri(raw));
             }
-            try {
-              const uri = vscode.Uri.parse(raw);
-              if (uri.scheme === 'file') {
-                uriSet.set(uri.toString(), uri);
-              }
-            } catch {}
           }
         }
-      } catch {}
-    }
-
-    const explorerTree = dataTransfer.get('application/vnd.code.tree.explorer');
-    if (explorerTree) {
-      let value: string;
-
-      try {
-        value = await explorerTree.asString();
       } catch {
-        value = '';
-      }
-
-      if (!value && (explorerTree as any)?.value) {
-        value = String((explorerTree as any).value);
-      }
-
-      if (value) {
-        this.extractUrisFromUnknownPayload(value).forEach((uri) => {
-          if (uri.scheme === 'file') {
-            uriSet.set(uri.toString(), uri);
-          }
-        });
+        // malformed internal payload: ignore
       }
     }
 
-    const codeFiles = dataTransfer.get('application/vnd.code.files');
-    if (codeFiles) {
-      let value: string;
-
-      try {
-        value = await codeFiles.asString();
-      } catch {
-        value = '';
-      }
-
-      if (!value && (codeFiles as any)?.value) {
-        value = String((codeFiles as any).value);
-      }
-
+    for (const mime of ['application/vnd.code.tree.explorer', 'application/vnd.code.files']) {
+      const value = await readString(mime);
       if (value) {
-        this.extractUrisFromUnknownPayload(value).forEach((uri) => {
-          if (uri.scheme === 'file') {
-            uriSet.set(uri.toString(), uri);
-          }
-        });
+        this.extractUrisFromUnknownPayload(value).forEach(add);
       }
     }
 
-    const plainText = dataTransfer.get('text/plain');
-    if (plainText) {
-      const value = await plainText.asString();
-      for (const uri of this.parseUriList(value)) {
-        if (uri.scheme === 'file') {
-          uriSet.set(uri.toString(), uri);
-        }
-      }
+    // Plain text is only accepted when it clearly is a file reference. Previously any
+    // dropped text (e.g. "hello") was parsed as `file:///hello` and got pinned.
+    for (const uri of this.parseUriList(await readString('text/plain'))) {
+      add(uri);
     }
 
     return [...uriSet.values()];
@@ -318,71 +315,63 @@ class PinnedTreeDragAndDropController implements vscode.TreeDragAndDropControlle
     return undefined;
   }
 
+  private parseLine(line: string): vscode.Uri | undefined {
+    if (/^file:/i.test(line)) {
+      return parseUri(line);
+    }
+    if (path.isAbsolute(line)) {
+      return vscode.Uri.file(line);
+    }
+    return undefined;
+  }
+
   private parseUriList(raw: string): vscode.Uri[] {
     return raw
       .split(/\r?\n/)
       .map((line) => line.trim())
       .filter((line) => line.length > 0 && !line.startsWith('#'))
-      .map((line) => {
-        try {
-          return vscode.Uri.parse(line);
-        } catch {
-          return undefined;
-        }
-      })
+      .map((line) => this.parseLine(line))
       .filter((uri): uri is vscode.Uri => Boolean(uri));
   }
 
   private extractUrisFromUnknownPayload(raw: string): vscode.Uri[] {
     try {
-      const parsed = JSON.parse(raw) as unknown;
-      return this.extractUrisFromUnknownValue(parsed);
+      return this.extractUrisFromUnknownValue(JSON.parse(raw) as unknown);
     } catch {
-      try {
-        return [vscode.Uri.parse(raw)];
-      } catch {
-        return [];
-      }
+      return this.parseUriList(raw);
     }
   }
 
   private extractUrisFromUnknownValue(value: unknown): vscode.Uri[] {
     const uris: vscode.Uri[] = [];
-    const visit = (candidate: unknown): void => {
-      if (!candidate) {
+    const visit = (candidate: unknown, depth: number): void => {
+      if (!candidate || depth > MAX_PAYLOAD_DEPTH) {
         return;
       }
 
       if (typeof candidate === 'string') {
-        try {
-          uris.push(vscode.Uri.parse(candidate));
-        } catch {}
+        const uri = this.parseLine(candidate.trim());
+        if (uri) {
+          uris.push(uri);
+        }
         return;
       }
 
       if (Array.isArray(candidate)) {
-        candidate.forEach((item) => visit(item));
+        candidate.forEach((item) => visit(item, depth + 1));
         return;
       }
 
       if (typeof candidate === 'object') {
         const record = candidate as Record<string, unknown>;
-        if (typeof record.resourceUri === 'string') {
-          visit(record.resourceUri);
+        if (typeof record.fsPath === 'string' && path.isAbsolute(record.fsPath)) {
+          uris.push(vscode.Uri.file(record.fsPath));
         }
-        if (typeof record.uri === 'string') {
-          visit(record.uri);
-        }
-        if (typeof record.fsPath === 'string') {
-          try {
-            uris.push(vscode.Uri.file(record.fsPath));
-          } catch {}
-        }
-        Object.values(record).forEach((item) => visit(item));
+        Object.values(record).forEach((item) => visit(item, depth + 1));
       }
     };
 
-    visit(value);
+    visit(value, 0);
     return uris;
   }
 }
@@ -390,51 +379,79 @@ class PinnedTreeDragAndDropController implements vscode.TreeDragAndDropControlle
 export class PinnedTreeViewProvider
   implements vscode.TreeDataProvider<vscode.TreeItem>, vscode.Disposable
 {
-  private _onDidChangeTreeData = new vscode.EventEmitter<
+  private readonly _onDidChangeTreeData = new vscode.EventEmitter<
     vscode.TreeItem | undefined | null | void
   >();
   readonly onDidChangeTreeData = this._onDidChangeTreeData.event;
 
   private pinnedItems: PinRecord[] = [];
-  private viewMode: 'tree' | 'list' = 'tree';
-  private readonly storeDisposable: vscode.Disposable;
-  private readonly contextDisposable: vscode.Disposable;
+  private viewMode: ViewMode = 'tree';
+  private refreshTimer: NodeJS.Timeout | undefined;
+  private readonly disposables: vscode.Disposable[] = [];
   private folderCache = new Map<string, PinRecord[]>();
-  private readonly pinnedFilesSection = new ContextSectionItem('Pinned Files', 'pinnedFiles');
-  private readonly contextsSection = new ContextSectionItem('Contexts', 'contexts');
-  private readonly timelineSection = new ContextSectionItem('Recent Contexts', 'timeline');
+  private readonly pinnedFilesSection = new ContextSectionItem(t('Pinned Files'), 'pinnedFiles');
+  private readonly contextsSection = new ContextSectionItem(t('Contexts'), 'contexts');
+  private readonly timelineSection = new ContextSectionItem(t('Recent Contexts'), 'timeline');
   readonly dragAndDropController: vscode.TreeDragAndDropController<vscode.TreeItem>;
 
   constructor(
     private readonly pinStore: PinStore,
     private readonly contextStore: ContextStore
   ) {
+    this.viewMode = this.readViewMode();
     this.loadPinnedItems();
-    this.storeDisposable = this.pinStore.onDidChange(() => this.refresh());
-    this.contextDisposable = this.contextStore.onDidChange(() => this.refresh());
-    this.dragAndDropController = new PinnedTreeDragAndDropController(
-      this.pinStore,
-      this.contextStore
+
+    this.disposables.push(
+      this.pinStore.onDidChange(() => this.refresh()),
+      this.contextStore.onDidChange(() => this.refresh()),
+      // Changing `pin-context.viewMode` in the settings UI used to have no effect until reload.
+      vscode.workspace.onDidChangeConfiguration((event) => {
+        if (event.affectsConfiguration('pin-context.viewMode')) {
+          this.viewMode = this.readViewMode();
+          this.refresh();
+        }
+      })
     );
+    this.dragAndDropController = new PinnedTreeDragAndDropController(this.pinStore);
   }
 
   dispose(): void {
+    if (this.refreshTimer) {
+      clearTimeout(this.refreshTimer);
+      this.refreshTimer = undefined;
+    }
+    this.disposables.forEach((d) => d.dispose());
     this._onDidChangeTreeData.dispose();
-    this.storeDisposable.dispose();
-    this.contextDisposable.dispose();
   }
 
-  setViewMode(mode: 'tree' | 'list'): void {
+  getViewMode(): ViewMode {
+    return this.viewMode;
+  }
+
+  setViewMode(mode: ViewMode): void {
     this.viewMode = mode;
   }
 
+  /** Coalesces bursts of pin/context events into a single tree refresh. */
   refresh(): void {
-    this.loadPinnedItems();
-    this._onDidChangeTreeData.fire();
+    if (this.refreshTimer) {
+      return;
+    }
+    this.refreshTimer = setTimeout(() => {
+      this.refreshTimer = undefined;
+      this.loadPinnedItems();
+      this._onDidChangeTreeData.fire();
+    }, REFRESH_DEBOUNCE_MS);
+  }
+
+  private readViewMode(): ViewMode {
+    const mode = vscode.workspace.getConfiguration('pin-context').get<string>('viewMode', 'tree');
+    return mode === 'list' ? 'list' : 'tree';
   }
 
   private loadPinnedItems(): void {
-    this.pinStore.syncWithOpenTabs();
+    // No `syncWithOpenTabs()` here: PinStore already tracks tabs through events, and
+    // forcing a sync in the middle of a pin/unpin batch dropped records.
     this.pinnedItems = this.pinStore.getPinnedItems();
     this.folderCache = new Map<string, PinRecord[]>();
     for (const item of this.pinnedItems) {
@@ -476,13 +493,19 @@ export class PinnedTreeViewProvider
       if (element.section === 'timeline') {
         const buckets = this.contextStore.getTimelineBuckets();
         const headers: TimelineHeaderItem[] = [];
-        if (buckets.today.length > 0) headers.push(new TimelineHeaderItem('today', 'Today'));
+        if (buckets.today.length > 0) headers.push(new TimelineHeaderItem('today', t('Today')));
         if (buckets.yesterday.length > 0)
-          headers.push(new TimelineHeaderItem('yesterday', 'Yesterday'));
-        if (buckets.older.length > 0) headers.push(new TimelineHeaderItem('older', 'Older'));
-        return headers.length > 0
-          ? headers
-          : [new vscode.TreeItem('No recent contexts', vscode.TreeItemCollapsibleState.None)];
+          headers.push(new TimelineHeaderItem('yesterday', t('Yesterday')));
+        if (buckets.older.length > 0) headers.push(new TimelineHeaderItem('older', t('Older')));
+        if (headers.length > 0) {
+          return headers;
+        }
+        const empty = new vscode.TreeItem(
+          t('No recent contexts'),
+          vscode.TreeItemCollapsibleState.None
+        );
+        empty.id = 'timeline-empty';
+        return [empty];
       }
 
       if (this.pinnedItems.length === 0) {
