@@ -1,6 +1,6 @@
 # Pin Context for VS Code
 
-[![Version](https://img.shields.io/badge/version-0.0.6-blue.svg)](https://github.com/borisalex-in/pin-context)
+[![Version](https://img.shields.io/badge/version-0.0.7-blue.svg)](https://github.com/borisalex-in/pin-context)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
 [![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.102.0-007ACC)](https://code.visualstudio.com/)
 [![Support](https://img.shields.io/badge/Support-Crypto-FF9900?logo=bitcoin&logoColor=white)](#-support-the-project)
