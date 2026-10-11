@@ -2,6 +2,13 @@
 
 All notable changes to Pin Context are documented here.
 
+## [0.0.8]
+
+### Changed
+
+- Made the burger menu the only site navigation on all viewport widths; opening and closing it no longer changes behavior at desktop breakpoints.
+- Updated the release workflow so `release:ship` can safely finalize a version already prepared by `release:patch` without incrementing it twice, and added `release:push` to push the release commit and tag.
+
 ## [0.0.7]
 
 ### Added

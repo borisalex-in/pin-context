@@ -568,12 +568,6 @@ function initializeNavigation() {
       setOpen(false);
     }
   });
-
-  window.addEventListener('resize', () => {
-    if (window.innerWidth > 1200 && toggle.getAttribute('aria-expanded') === 'true') {
-      setOpen(false);
-    }
-  });
 }
 
 function initializeAgentFlow() {

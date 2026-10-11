@@ -32,9 +32,26 @@ test('responsive navigation has an accessible burger menu and valid section link
     .map((match) => match[0])
     .find((tag) => /\bclass="nav"/.test(tag) && /\bid="siteNav"/.test(tag));
   assert.ok(navTag, 'missing primary navigation element with id="siteNav"');
+  assert.match(css, /(^|\n)\.nav\s*\{\s*display:\s*none/s);
+  assert.match(css, /\.topbar \.nav\s*\{[^}]*display:\s*none/s);
   assert.match(css, /\.topbar \.nav\.open\s*\{\s*display:\s*flex/s);
+  assert.match(css, /\.nav-toggle\s*\{[^}]*display:\s*inline-flex/s);
+  const burgerRulesStart = css.indexOf('/* Navigation is always a collapsed burger menu');
+  assert.ok(burgerRulesStart >= 0, 'missing global burger-only navigation rules');
+  const burgerRulesEnd = css.indexOf('@media', burgerRulesStart);
+  const globalBurgerRules = css.slice(
+    burgerRulesStart,
+    burgerRulesEnd < 0 ? undefined : burgerRulesEnd
+  );
+  assert.match(globalBurgerRules, /\.topbar \.nav\s*\{[^}]*display:\s*none/s);
+  assert.match(globalBurgerRules, /\.topbar \.nav\.open\s*\{\s*display:\s*flex/s);
   assert.match(script, /function initializeNavigation\(\)/);
   assert.match(script, /event\.key === 'Escape'/);
+  assert.doesNotMatch(
+    script,
+    /innerWidth\s*>\s*1200/,
+    'navigation must remain a burger menu and stay toggleable on every viewport width'
+  );
 
   const ids = [...html.matchAll(/\bid="([^"]+)"/g)].map((match) => match[1]);
   assert.equal(new Set(ids).size, ids.length, 'HTML IDs must be unique');

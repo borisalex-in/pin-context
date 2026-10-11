@@ -31,6 +31,7 @@
     "release:major": "npm run precommit:check && tsx scripts/release.ts major",
     "release:ship": "npm run precommit:check && tsx scripts/release.ts patch --commit --tag",
     "release:status": "tsx scripts/release.ts --status",
+    "release:push": "npx tsx scripts/release.ts --push --tag",
     "hotfix:patch": "npm run release:patch",
     "build": "npm run clean && npm run compile",
     "build:vsix": "npm run clean && npm run compile && vsce package --no-dependencies",
