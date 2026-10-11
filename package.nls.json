@@ -43,5 +43,13 @@
   "captureOpenTabsDescription": "Save open (non-pinned) tabs and the editor group layout when switching contexts",
   "pinResource": "Pin File",
   "unpinResource": "Unpin File",
-  "copyAgentMcpConfig": "Copy MCP Client Configuration"
+  "copyAgentMcpConfig": "Copy MCP Client Configuration",
+  "enumViewModeTreeDescription": "Show pinned files grouped by folder",
+  "enumViewModeListDescription": "Show pinned files in a flat list",
+  "enumPinnedPersistenceGlobal": "Store pinned-file data across all workspaces",
+  "enumPinnedPersistenceWorkspace": "Store pinned-file data in the current workspace",
+  "enumRestoreKeepInTree": "Keep pinned files in the sidebar without reopening them",
+  "enumRestoreReopenAndPin": "Reopen saved files and pin their tabs on startup",
+  "enumContextPersistenceGlobal": "Store context metadata across all workspaces",
+  "enumContextPersistenceWorkspace": "Store context metadata in the current workspace"
 }

@@ -96,6 +96,7 @@ export async function activate(context: vscode.ExtensionContext): Promise<PinCon
     // Start the external bridge and register the in-editor provider against that contract.
     await agentBridge.start();
     registerMcpServerProvider(context, agentBridge, extensionVersion);
+    agentApi.setMcpProviderRegistered(true);
   } catch (error) {
     logger.error('Failed to start Pin Context MCP bridge', error);
     void vscode.window.showWarningMessage(
@@ -162,9 +163,9 @@ function registerAgentCommands(
       const config = {
         mcpServers: {
           'pin-context': {
-            command: 'node',
+            command: process.execPath,
             args: [serverPath, '--bridge-config', configPath],
-            env: { PIN_CONTEXT_VERSION: version }
+            env: { PIN_CONTEXT_VERSION: version, ELECTRON_RUN_AS_NODE: '1' }
           }
         }
       };
@@ -188,7 +189,7 @@ function registerCommands(
   contextStore: ContextStore,
   pinnedTreeProvider: PinnedTreeViewProvider
 ): void {
-  const registerCommand = (command: string, callback: (...args: any[]) => unknown): void => {
+  const registerCommand = (command: string, callback: (...args: unknown[]) => unknown): void => {
     context.subscriptions.push(
       vscode.commands.registerCommand(command, async (...args: unknown[]) => {
         try {

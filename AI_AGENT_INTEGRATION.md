@@ -38,7 +38,7 @@ Koda Desktop users can follow the [official Koda MCP guide](https://docs.kodacod
 
 ### Read-only
 
-- `pin_context_get_status` — active context, total pins, context count, workspace folders.
+- `pin_context_get_status` — active context, total pins, context count, workspace folders, and whether the native VS Code MCP provider registered successfully (`mcpProviderRegistered`).
 - `pin_context_get_active_context` — active context metadata and its saved pinned-file list.
 - `pin_context_list_contexts` — list visible manual, Git, and repository contexts.
 - `pin_context_get_pinned_files` — live pinned files, or a context's saved files when `context_id` is provided.
@@ -78,3 +78,9 @@ if (extension) {
 4. Never retry a cancelled operation without fresh user authorization.
 5. For pin/unpin calls, use workspace-relative paths or workspace-folder-prefixed paths in multi-root workspaces. Do not request paths outside open workspace folders.
 6. Report when files are only listed as paths; Pin Context does not return their contents.
+
+## Public compatibility contract
+
+Starting with Pin Context `1.0.0`, `api.d.ts` and the public API returned by extension activation are a stable integration surface. Patch releases preserve public types and semantics. Minor releases may add optional fields, methods, and new MCP tools without changing existing tool names, input schemas, or the meaning of their results. Breaking changes require a major version.
+
+MCP configuration copied by the extension points to the running VS Code installation and a per-workspace bridge configuration. Keep that VS Code workspace open while using the external client. If the workspace/window changes or the bridge configuration is no longer available, run **Pin Context: Copy MCP Client Configuration** again. The copied configuration contains a short-lived local access token; do not commit or share it.

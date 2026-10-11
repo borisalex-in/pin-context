@@ -47,10 +47,19 @@ export interface PinContextAgentStatus {
   activeContext: PinContextAgentContextSummary | null;
   pinnedFileCount: number;
   contextCount: number;
+  /** True only after the native VS Code MCP server-definition provider registered successfully. */
+  mcpProviderRegistered: boolean;
   workspaceFolders: PinContextAgentWorkspaceFolder[];
 }
 
-/** Public API returned by `vscode.extensions.getExtension('borisalex-in.pin-context').activate()`. */
+/**
+ * Public API returned by `vscode.extensions.getExtension('borisalex-in.pin-context').activate()`.
+ *
+ * Compatibility policy: beginning with Pin Context 1.0.0, this declaration is a stable public
+ * contract. Patch releases preserve API shape and semantics; minor releases may add backwards-
+ * compatible members and tool names; breaking changes require a major release. MCP tool names,
+ * input schemas, and existing result semantics follow the same policy.
+ */
 export interface PinContextAgentApi {
   readonly apiVersion: 1;
   getStatus(): Promise<PinContextAgentStatus>;
@@ -58,7 +67,10 @@ export interface PinContextAgentApi {
   listContexts(): Promise<PinContextAgentContextSummary[]>;
   getPinnedFiles(contextId?: string): Promise<PinContextAgentFile[]>;
   getWorkspaceInfo(): Promise<PinContextAgentWorkspaceFolder[]>;
-  /** State-changing tools always require user approval. */
+  /**
+   * Invoke a Pin Context tool. State-changing operations display an explicit approval prompt;
+   * callers must not treat this method invocation as user consent.
+   */
   executeTool(name: PinContextAgentToolName, input?: Record<string, unknown>): Promise<unknown>;
 }
 

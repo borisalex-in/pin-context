@@ -29,6 +29,7 @@ Thumbs.db
 
 # Testing
 .vscode-test/
+.vscode-test-tools/
 test-results/
 
 # Environment
@@ -54,7 +55,6 @@ temp/
 .vscode
 
 # npm
-package-lock.json
 yarn.lock
 
 # Extension packaging

@@ -1,7 +1,7 @@
 {
   "name": "pin-context",
   "displayName": "%pinContext%",
-  "description": "Advanced context and pin management for VS Code with instant keyboard navigation",
+  "description": "Organize files and task contexts in VS Code, navigate with shortcuts, and connect AI agents through MCP.",
   "version": "0.0.8",
   "publisher": "borisalex-in",
   "icon": "images/icon.png",
@@ -29,18 +29,21 @@
     "release:patch": "npm run precommit:check && tsx scripts/release.ts patch",
     "release:minor": "npm run precommit:check && tsx scripts/release.ts minor",
     "release:major": "npm run precommit:check && tsx scripts/release.ts major",
-    "release:ship": "npm run precommit:check && tsx scripts/release.ts patch --commit --tag",
+    "release:ship": "npm run precommit:check && npx tsx scripts/release.ts patch --commit --tag",
     "release:status": "tsx scripts/release.ts --status",
-    "release:push": "npx tsx scripts/release.ts --push --tag",
     "hotfix:patch": "npm run release:patch",
     "build": "npm run clean && npm run compile",
-    "build:vsix": "npm run clean && npm run compile && vsce package --no-dependencies",
+    "build:vsix": "npm run clean && npm run compile && vsce package --no-dependencies && npm run verify:package",
     "clean": "tsx scripts/clean.ts",
     "install:local": "code --install-extension pin-context-$(node -p \"require('./package.json').version\").vsix",
     "install:vscode": "code --install-extension pin-context-$(node -p \"require('./package.json').version\").vsix",
     "reinstall:local": "npm run build:vsix && npm run install:vscode",
     "publish:vsix": "vsce publish --no-dependencies",
-    "test": "tsx --test test/*.test.ts"
+    "test": "tsx --test test/*.test.ts",
+    "release:push": "npx tsx scripts/release.ts --push --tag",
+    "test:integration:install": "npm install --no-save --package-lock=false @vscode/test-electron@3.1.0",
+    "test:integration": "npm run compile && node scripts/run-vscode-integration.cjs",
+    "verify:package": "tsx scripts/verify-package-files.ts"
   },
   "keywords": [
     "vscode",
@@ -62,7 +65,11 @@
     "file bookmarks",
     "code bookmarks",
     "git branch context",
-    "navigation"
+    "navigation",
+    "ai agents",
+    "mcp",
+    "claude code",
+    "openai codex"
   ],
   "engines": {
     "vscode": "^1.102.0"
@@ -411,8 +418,8 @@
             "list"
           ],
           "enumDescriptions": [
-            "Show pinned files grouped by folder",
-            "Show pinned files as a flat list"
+            "%enumViewModeTreeDescription%",
+            "%enumViewModeListDescription%"
           ],
           "description": "%displayModeForPinnedFilesView%"
         },
@@ -434,8 +441,8 @@
             "workspaceState"
           ],
           "enumDescriptions": [
-            "Persist pinned files globally across all workspaces",
-            "Persist pinned files only in the current workspace"
+            "%enumPinnedPersistenceGlobal%",
+            "%enumPinnedPersistenceWorkspace%"
           ],
           "description": "%storageScopeUsedForPinnedFilesPersistence%"
         },
@@ -447,8 +454,8 @@
             "reopenAndPin"
           ],
           "enumDescriptions": [
-            "Keep pinned files visible in the sidebar even when closed",
-            "Try to reopen persisted files and pin their tabs on startup"
+            "%enumRestoreKeepInTree%",
+            "%enumRestoreReopenAndPin%"
           ],
           "description": "%howPersistedPinnedFilesAreRestoredWhenTheExtensionStarts%"
         },
@@ -513,8 +520,8 @@
             "workspaceState"
           ],
           "enumDescriptions": [
-            "Persist contexts globally across all workspaces",
-            "Persist contexts only in the current workspace"
+            "%enumContextPersistenceGlobal%",
+            "%enumContextPersistenceWorkspace%"
           ],
           "description": "%persistenceScopeForContextMetadata%"
         },
@@ -538,13 +545,13 @@
     "mcpServerDefinitionProviders": [
       {
         "id": "pin-context-mcp",
-        "label": "Pin Context"
+        "label": "%pinContext%"
       }
     ]
   },
   "devDependencies": {
     "@types/node": "20.x",
-    "@types/vscode": "^1.85.0",
+    "@types/vscode": "1.102.0",
     "@typescript-eslint/eslint-plugin": "^8.59.0",
     "@typescript-eslint/parser": "^8.59.0",
     "@vscode/vsce": "^2.24.0",
@@ -576,5 +583,12 @@
   "bugs": {
     "url": "https://github.com/borisalex-in/pin-context/issues"
   },
-  "types": "./api.d.ts"
+  "types": "./api.d.ts",
+  "galleryBanner": {
+    "color": "#0F1629",
+    "theme": "dark"
+  },
+  "sponsor": {
+    "url": "https://github.com/borisalex-in/pin-context#-support-the-project"
+  }
 }

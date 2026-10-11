@@ -79,6 +79,11 @@ test('activation registers all commands without errors', () => {
 test('public agent API is returned and can read workspace/context state', async () => {
   assert.equal(agentApi.apiVersion, 1);
   const status = await agentApi.getStatus();
+  assert.equal(
+    status.mcpProviderRegistered,
+    true,
+    'native MCP provider registered during activation'
+  );
   assert.equal(status.version, 1);
   assert.equal(status.workspaceFolders.length, 1);
   assert.equal(status.workspaceFolders[0].path, repoDir);

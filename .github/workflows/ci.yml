@@ -1,0 +1,50 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    name: Validate extension and VSIX
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Run formatting, lint, typecheck, build, and unit/smoke tests
+        run: npm run precommit:check
+
+      - name: Install VS Code integration test runner
+        run: npm run test:integration:install
+
+      - name: Run tests in a real VS Code Extension Host
+        run: xvfb-run -a npm run test:integration
+
+      - name: Build and verify VSIX package contents
+        run: npm run build:vsix
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pin-context-vsix
+          path: pin-context-*.vsix
+          if-no-files-found: error
+          retention-days: 14

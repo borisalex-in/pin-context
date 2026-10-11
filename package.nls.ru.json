@@ -43,5 +43,13 @@
   "captureOpenTabsDescription": "Сохранять открытые незакреплённые вкладки и расположение групп редакторов при переключении контекстов",
   "pinResource": "Закрепить файл",
   "unpinResource": "Открепить файл",
-  "copyAgentMcpConfig": "Скопировать конфигурацию MCP-клиента"
+  "copyAgentMcpConfig": "Скопировать конфигурацию MCP-клиента",
+  "enumViewModeTreeDescription": "Показывать закреплённые файлы с группировкой по папкам",
+  "enumViewModeListDescription": "Показывать закреплённые файлы плоским списком",
+  "enumPinnedPersistenceGlobal": "Хранить данные о закреплённых файлах для всех рабочих областей",
+  "enumPinnedPersistenceWorkspace": "Хранить данные о закреплённых файлах в текущей рабочей области",
+  "enumRestoreKeepInTree": "Оставлять закреплённые файлы на боковой панели, не открывая их повторно",
+  "enumRestoreReopenAndPin": "При запуске повторно открывать сохранённые файлы и закреплять их вкладки",
+  "enumContextPersistenceGlobal": "Хранить метаданные контекстов для всех рабочих областей",
+  "enumContextPersistenceWorkspace": "Хранить метаданные контекстов в текущей рабочей области"
 }

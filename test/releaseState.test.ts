@@ -72,7 +72,7 @@ test('release scripts expose ship and push as separate operations', async () => 
   };
   assert.equal(
     pkg.scripts['release:ship'],
-    'npm run precommit:check && tsx scripts/release.ts patch --commit --tag'
+    'npm run precommit:check && npx tsx scripts/release.ts patch --commit --tag'
   );
   assert.equal(pkg.scripts['release:push'], 'npx tsx scripts/release.ts --push --tag');
 });

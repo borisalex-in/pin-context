@@ -53,6 +53,12 @@ Pin Context helps developers switch tasks without losing focus: save pinned tabs
 
 Pin Context exposes a shared agent API and MCP tools for compatible AI agents. Agents can inspect the active context and pinned files, list/switch contexts, and pin or unpin workspace files. Read operations are non-mutating; changes require user approval. See [AI_AGENT_INTEGRATION.md](AI_AGENT_INTEGRATION.md) for Claude Code, Codex, and other MCP client setup, tools, and security details.
 
+## Public API Compatibility
+
+`api.d.ts` and the `PinContextAgentApi` returned by extension activation are intended for integrations maintained by other extensions and AI-agent clients. Starting with `1.0.0`, this API is a stable compatibility contract: patch releases fix bugs without breaking the API, minor releases may add backwards-compatible methods, fields, and tools, and breaking changes require a major release. The same compatibility policy applies to existing MCP tool names, input schemas, and result semantics.
+
+The extension activates automatically after VS Code finishes starting (`onStartupFinished`) to restore context state and initialize Git and agent integrations. No manual activation command is required.
+
 ## Commands
 
 - `Pin Context: Pin Current File`
@@ -111,6 +117,10 @@ Pin Context exposes a shared agent API and MCP tools for compatible AI agents. A
 
 - `pin-context.contexts.captureEditorState`: save cursor position and scroll (default: `true`)
 - `pin-context.contexts.captureOpenTabs`: save open tabs (default: `false`)
+
+## Security
+
+See [SECURITY.md](SECURITY.md) for private vulnerability-reporting instructions. Do not share copied MCP bridge configuration or its bearer token: the configuration grants access to the local Pin Context agent bridge while that VS Code workspace is running.
 
 ## Troubleshooting
 

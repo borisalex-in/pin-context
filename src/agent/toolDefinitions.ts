@@ -53,7 +53,7 @@ export const AGENT_TOOL_DEFINITIONS: AgentToolDefinition[] = [
     name: 'pin_context_get_status',
     title: 'Get Pin Context status',
     description:
-      'Read the active Pin Context, current pinned-file count, available context count, and workspace folders. Does not change state.',
+      'Read the active Pin Context, current pinned-file count, available context count, workspace folders, and whether the native VS Code MCP provider registered successfully. Does not change state.',
     readOnly: true,
     inputSchema: noArguments,
     confirmation: () => 'Read Pin Context status'
