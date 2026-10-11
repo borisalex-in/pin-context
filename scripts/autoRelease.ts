@@ -69,7 +69,8 @@ if (run('git', ['tag', '--list', tag], true) === tag) fail(`tag ${tag} already e
 
 // npm's version lifecycle synchronizes package.json, README.md, and docs/index.html.
 run('npm', ['version', bump, '--no-git-tag-version', '--no-commit-hooks']);
-const actualVersion = (JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { version: string }).version;
+const actualVersion = (JSON.parse(readFileSync(packageJsonPath, 'utf8')) as { version: string })
+  .version;
 if (actualVersion !== newVersion) {
   fail(`expected version ${newVersion} after bump, got ${actualVersion}`);
 }
@@ -84,15 +85,18 @@ const unreleasedBody = existingChangelog.slice(bodyStart, bodyEnd).trim();
 const date = new Date().toISOString().slice(0, 10);
 const prEntry = `### Merged pull requests\n\n- ${prTitle} ([#${prNumber}](${prUrl}))`;
 const releaseBody = [unreleasedBody, prEntry].filter(Boolean).join('\n\n');
-const newChangelog = [
-  existingChangelog.slice(0, bodyStart).trimEnd(),
-  '',
-  `## [${newVersion}] - ${date}`,
-  '',
-  releaseBody,
-  '',
-  existingChangelog.slice(bodyEnd).trimStart()
-].join('\n').replace(/\n{3,}/g, '\n\n') + '\n';
+const newChangelog =
+  [
+    existingChangelog.slice(0, bodyStart).trimEnd(),
+    '',
+    `## [${newVersion}] - ${date}`,
+    '',
+    releaseBody,
+    '',
+    existingChangelog.slice(bodyEnd).trimStart()
+  ]
+    .join('\n')
+    .replace(/\n{3,}/g, '\n\n') + '\n';
 writeFileSync(changelogPath, newChangelog, 'utf8');
 
 // Build before creating the commit/tag so a packaging failure cannot publish a broken release.
@@ -101,7 +105,8 @@ run('npm', ['run', 'build:vsix']);
 run('git', ['config', 'user.name', 'github-actions[bot]']);
 run('git', ['config', 'user.email', '41898282+github-actions[bot]@users.noreply.github.com']);
 const files = ['package.json', 'README.md', 'docs/index.html', 'CHANGELOG.md'];
-const trackedLock = run('git', ['ls-files', '--error-unmatch', 'package-lock.json'], true) === 'package-lock.json';
+const trackedLock =
+  run('git', ['ls-files', '--error-unmatch', 'package-lock.json'], true) === 'package-lock.json';
 if (trackedLock) files.push('package-lock.json');
 run('git', ['add', ...files]);
 run('git', ['commit', '-m', `chore(release): v${newVersion}`]);

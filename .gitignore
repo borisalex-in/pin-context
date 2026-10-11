@@ -55,7 +55,6 @@ temp/
 .vscode
 
 # npm
-package-lock.json
 yarn.lock
 
 # Extension packaging
