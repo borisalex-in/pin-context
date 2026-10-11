@@ -2,7 +2,7 @@
   "name": "pin-context",
   "displayName": "%pinContext%",
   "description": "Organize files and task contexts in VS Code, navigate with shortcuts, and connect AI agents through MCP.",
-  "version": "0.0.8",
+  "version": "1.0.0",
   "publisher": "borisalex-in",
   "icon": "images/icon.png",
   "author": {

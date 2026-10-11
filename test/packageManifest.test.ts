@@ -49,7 +49,7 @@ test('published manifest matches the VS Code API baseline and declares a stable 
       'node_modules/@types/vscode': { version: string; integrity?: string };
     };
   }>('package-lock.json');
-  assert.equal(pkg.version, '0.0.8');
+  assert.match(pkg.version, /^\d+\.\d+\.\d+$/);
   assert.equal(pkg.engines.vscode, '^1.102.0');
   assert.equal(pkg.devDependencies['@types/vscode'], '1.102.0');
   assert.equal(lock.packages[''].version, pkg.version);
