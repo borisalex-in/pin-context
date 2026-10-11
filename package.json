@@ -25,7 +25,7 @@
     "format:check": "prettier --check \"**/*.{ts,js,json,md,css,html,yml,yaml}\"",
     "precommit:check": "npm run format:check && npm run lint && npm run compile && npm test",
     "prepare": "husky",
-    "version": "tsx scripts/update-readme-version.ts",
+    "version": "tsx scripts/update-version-metadata.ts",
     "release:patch": "npm run precommit:check && tsx scripts/release.ts patch",
     "release:minor": "npm run precommit:check && tsx scripts/release.ts minor",
     "release:major": "npm run precommit:check && tsx scripts/release.ts major",
@@ -64,7 +64,7 @@
     "navigation"
   ],
   "engines": {
-    "vscode": "^1.85.0"
+    "vscode": "^1.102.0"
   },
   "l10n": "./l10n",
   "categories": [
@@ -100,6 +100,18 @@
         "command": "pin-context.togglePinCurrentEditor",
         "title": "%togglePinCurrentEditor%",
         "category": "%pinContext%"
+      },
+      {
+        "command": "pin-context.pinResource",
+        "title": "%pinResource%",
+        "category": "%pinContext%",
+        "icon": "$(pin)"
+      },
+      {
+        "command": "pin-context.unpinResource",
+        "title": "%unpinResource%",
+        "category": "%pinContext%",
+        "icon": "$(pinned)"
       },
       {
         "command": "pin-context.pinAllEditors",
@@ -205,23 +217,43 @@
         "command": "pin-context.openPinnedFile",
         "title": "%openPinnedFile%",
         "category": "%pinContext%"
+      },
+      {
+        "command": "pin-context.copyAgentMcpConfig",
+        "title": "%copyAgentMcpConfig%",
+        "category": "%pinContext%"
       }
     ],
     "keybindings": [
       {
+        "command": "pin-context.pinResource",
+        "key": "ctrl+alt+k",
+        "mac": "cmd+alt+k",
+        "when": "filesExplorerFocus && resourceScheme == file && !explorerResourceIsFolder && resource not in pin-context.pinnedResources && resourcePath not in pin-context.pinnedResourcePaths"
+      },
+      {
+        "command": "pin-context.unpinResource",
+        "key": "ctrl+alt+l",
+        "mac": "cmd+alt+l",
+        "when": "filesExplorerFocus && resourceScheme == file && !explorerResourceIsFolder && (resource in pin-context.pinnedResources || resourcePath in pin-context.pinnedResourcePaths)"
+      },
+      {
         "command": "pin-context.pinCurrentEditor",
         "key": "ctrl+alt+k",
-        "mac": "cmd+alt+k"
+        "mac": "cmd+alt+k",
+        "when": "!filesExplorerFocus"
       },
       {
         "command": "pin-context.unpinCurrentEditor",
         "key": "ctrl+alt+l",
-        "mac": "cmd+alt+l"
+        "mac": "cmd+alt+l",
+        "when": "!filesExplorerFocus"
       },
       {
         "command": "pin-context.togglePinCurrentEditor",
         "key": "ctrl+alt+j",
-        "mac": "cmd+alt+j"
+        "mac": "cmd+alt+j",
+        "when": "!filesExplorerFocus"
       },
       {
         "command": "pin-context.switchContext",
@@ -326,19 +358,14 @@
       ],
       "explorer/context": [
         {
-          "command": "pin-context.pinCurrentEditor",
-          "when": "resourceScheme == file && !explorerResourceIsFolder && resource in pin-context.pinnedResources && !pin-context.isPinned",
+          "command": "pin-context.pinResource",
+          "when": "resourceScheme == file && !explorerResourceIsFolder && resource not in pin-context.pinnedResources && resourcePath not in pin-context.pinnedResourcePaths",
           "group": "navigation@20"
         },
         {
-          "command": "pin-context.unpinCurrentEditor",
-          "when": "resourceScheme == file && !explorerResourceIsFolder && resource in pin-context.pinnedResources && pin-context.isPinned",
-          "group": "navigation@21"
-        },
-        {
-          "command": "pin-context.togglePinCurrentEditor",
-          "when": "resourceScheme == file && !explorerResourceIsFolder && !(resource in pin-context.pinnedResources)",
-          "group": "navigation@22"
+          "command": "pin-context.unpinResource",
+          "when": "resourceScheme == file && !explorerResourceIsFolder && (resource in pin-context.pinnedResources || resourcePath in pin-context.pinnedResourcePaths)",
+          "group": "navigation@20"
         }
       ],
       "commandPalette": [
@@ -360,6 +387,14 @@
         },
         {
           "command": "pin-context.switchContextById",
+          "when": "false"
+        },
+        {
+          "command": "pin-context.pinResource",
+          "when": "false"
+        },
+        {
+          "command": "pin-context.unpinResource",
           "when": "false"
         }
       ]
@@ -498,7 +533,13 @@
           "description": "%captureOpenTabsDescription%"
         }
       }
-    }
+    },
+    "mcpServerDefinitionProviders": [
+      {
+        "id": "pin-context-mcp",
+        "label": "Pin Context"
+      }
+    ]
   },
   "devDependencies": {
     "@types/node": "20.x",
@@ -533,5 +574,6 @@
   "homepage": "https://github.com/borisalex-in/pin-context#readme",
   "bugs": {
     "url": "https://github.com/borisalex-in/pin-context/issues"
-  }
+  },
+  "types": "./api.d.ts"
 }

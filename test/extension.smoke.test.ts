@@ -24,6 +24,7 @@ const file = (name: string) => Uri.file(`${testHarness.workspaceRoot}/${name}`);
 
 let repoDir: string;
 let ctx: ReturnType<typeof createExtensionContext>;
+let agentApi: any;
 
 before(async () => {
   repoDir = mkdtempSync(path.join(tmpdir(), 'pin-context-'));
@@ -48,7 +49,7 @@ before(async () => {
   testHarness.workspaceRoot = repoDir;
   testHarness.reset();
   ctx = createExtensionContext();
-  await extension.activate(ctx);
+  agentApi = await extension.activate(ctx);
   await sleep(300); // background initialization
 });
 
@@ -60,6 +61,8 @@ after(() => {
 test('activation registers all commands without errors', () => {
   for (const id of [
     'pin-context.pinCurrentEditor',
+    'pin-context.pinResource',
+    'pin-context.unpinResource',
     'pin-context.switchContext',
     'pin-context.openPinnedFile',
     'pin-context.deleteContext'
@@ -70,6 +73,93 @@ test('activation registers all commands without errors', () => {
     testHarness.messages.filter((m: string) => m.startsWith('error')),
     []
   );
+  assert.ok(testHarness.mcpProviders.has('pin-context-mcp'), 'native MCP provider is registered');
+});
+
+test('public agent API is returned and can read workspace/context state', async () => {
+  assert.equal(agentApi.apiVersion, 1);
+  const status = await agentApi.getStatus();
+  assert.equal(status.version, 1);
+  assert.equal(status.workspaceFolders.length, 1);
+  assert.equal(status.workspaceFolders[0].path, repoDir);
+  assert.ok(Array.isArray(await agentApi.listContexts()));
+  assert.ok(Array.isArray(await agentApi.getPinnedFiles()));
+});
+
+test('agent tools reject unexpected and prototype-sensitive input fields', async () => {
+  await assert.rejects(
+    agentApi.executeTool('pin_context_get_status', { unexpected: true }),
+    /unexpected tool input field/i
+  );
+  const prototypeSensitive = JSON.parse('{"__proto__": {"polluted": true}}') as Record<
+    string,
+    unknown
+  >;
+  await assert.rejects(
+    agentApi.executeTool('pin_context_get_status', prototypeSensitive),
+    /unexpected tool input field/i
+  );
+  const inheritedInput = Object.create({ context_id: 'inherited-context' }) as Record<
+    string,
+    unknown
+  >;
+  await assert.rejects(
+    agentApi.executeTool('pin_context_get_pinned_files', inheritedInput),
+    /tool input must be a JSON object/i
+  );
+});
+
+test('agent file tools reject paths outside the opened workspace', async () => {
+  await assert.rejects(
+    agentApi.executeTool('pin_context_pin_files', {
+      paths: [path.join(repoDir, '..', 'outside.ts')]
+    }),
+    /outside the opened workspace/i
+  );
+});
+
+test('agent write operations require approval and cancellation leaves context state unchanged', async () => {
+  await agentApi.listContexts();
+  const name = 'Agent-created context that should be cancelled';
+  await assert.rejects(
+    agentApi.executeTool('pin_context_create_context', { name }),
+    /user cancelled this operation/i
+  );
+  const after = await agentApi.listContexts();
+  assert.equal(
+    after.some((item: { name?: string }) => item.name === name),
+    false
+  );
+  assert.ok(
+    testHarness.messages.some((message: string) =>
+      message.includes('Allow Pin Context agent to make this change?')
+    ),
+    'a confirmation prompt was shown for the mutating operation'
+  );
+});
+
+test('Explorer Pin/Unpin menu commands have context-specific shortcut hints', () => {
+  const manifest = require('../package.json');
+  const bindings = manifest.contributes.keybindings as Array<{
+    command: string;
+    key: string;
+    mac?: string;
+    when?: string;
+  }>;
+  const pin = bindings.find((binding) => binding.command === 'pin-context.pinResource');
+  const unpin = bindings.find((binding) => binding.command === 'pin-context.unpinResource');
+  assert.ok(pin, 'Pin File has a keybinding');
+  assert.ok(unpin, 'Unpin File has a keybinding');
+  assert.equal(pin.key, 'ctrl+alt+k');
+  assert.equal(pin.mac, 'cmd+alt+k');
+  assert.ok(pin.when?.includes('filesExplorerFocus'));
+  assert.ok(pin.when?.includes('resource not in pin-context.pinnedResources'));
+  assert.ok(pin.when?.includes('resourcePath not in pin-context.pinnedResourcePaths'));
+  assert.equal(unpin.key, 'ctrl+alt+l');
+  assert.equal(unpin.mac, 'cmd+alt+l');
+  assert.ok(unpin.when?.includes('filesExplorerFocus'));
+  assert.ok(unpin.when?.includes('resource in pin-context.pinnedResources'));
+  assert.ok(unpin.when?.includes('resourcePath in pin-context.pinnedResourcePaths'));
 });
 
 test('pin / unpin the active editor', async () => {
@@ -83,6 +173,80 @@ test('pin / unpin the active editor', async () => {
   await run('pin-context.unpinCurrentEditor');
   await sleep(100);
   assert.deepEqual(testHarness.pinnedUris(), []);
+});
+
+test('Explorer context-menu actions pin and unpin the supplied resource, not the active editor', async () => {
+  const target = file('explorer-target.ts');
+  const active = file('active-editor.ts');
+  testHarness.openTab(target);
+  testHarness.openTab(active); // keep a different file active than the one in the context menu
+  await sleep(50);
+
+  await run('pin-context.pinResource', target);
+  await sleep(100);
+  assert.ok(
+    testHarness.pinnedUris().includes(target.toString()),
+    'the clicked Explorer file is pinned'
+  );
+  assert.ok(
+    !testHarness.pinnedUris().includes(active.toString()),
+    'the active editor is not pinned by mistake'
+  );
+  const pinnedResourceUris = testHarness.contextKeys.get('pin-context.pinnedResources') as string[];
+  assert.ok(
+    pinnedResourceUris.includes(target.toString()),
+    'the selected resource URI is immediately marked pinned'
+  );
+
+  await run('pin-context.unpinResource', target);
+  await sleep(100);
+  assert.ok(
+    !testHarness.pinnedUris().includes(target.toString()),
+    'the clicked Explorer file is unpinned'
+  );
+  assert.ok(
+    !(testHarness.contextKeys.get('pin-context.pinnedResources') as string[]).includes(
+      target.toString()
+    ),
+    'the selected resource URI is removed from the context after unpin'
+  );
+  assert.ok(
+    !testHarness.pinnedUris().includes(active.toString()),
+    'the unrelated active editor stays unpinned'
+  );
+});
+
+test('Explorer keyboard shortcuts operate on the selected resources and restore clipboard contents', async () => {
+  const selectedOne = file('keyboard-selected-one.ts');
+  const selectedTwo = file('keyboard-selected-two.ts');
+  const active = file('keyboard-active.ts');
+  testHarness.openTab(active);
+  testHarness.explorerSelectionPaths = [selectedOne.fsPath, selectedTwo.fsPath];
+  testHarness.clipboardText = 'user clipboard content';
+
+  await run('pin-context.pinResource');
+  await sleep(150);
+  assert.ok(testHarness.pinnedUris().includes(selectedOne.toString()));
+  assert.ok(testHarness.pinnedUris().includes(selectedTwo.toString()));
+  assert.ok(
+    !testHarness.pinnedUris().includes(active.toString()),
+    'active editor is not used as fallback'
+  );
+  assert.equal(
+    testHarness.clipboardText,
+    'user clipboard content',
+    'clipboard is restored after pin'
+  );
+
+  await run('pin-context.unpinResource');
+  await sleep(150);
+  assert.ok(!testHarness.pinnedUris().includes(selectedOne.toString()));
+  assert.ok(!testHarness.pinnedUris().includes(selectedTwo.toString()));
+  assert.equal(
+    testHarness.clipboardText,
+    'user clipboard content',
+    'clipboard is restored after unpin'
+  );
 });
 
 test('pinning a non-active open tab pins the right file and restores focus', async () => {
@@ -203,7 +367,7 @@ test('export/import contexts round-trip via the commands', async () => {
   const parsed = JSON.parse(exported);
   assert.ok(Array.isArray(parsed.contexts) && parsed.contexts.length > 0, 'contexts serialized');
 
-  // Change the store: drop one context by name, then import the file back.
+  // Import the same export again; matching names should be updated, not duplicated.
   const before = JSON.parse(JSON.stringify(ctx.workspaceState.get('pin-context.contexts.snapshot')))
     .contexts.length;
 
@@ -214,8 +378,8 @@ test('export/import contexts round-trip via the commands', async () => {
     .contexts.length;
   assert.ok(after >= before, 'import merged without losing contexts');
   assert.ok(
-    testHarness.messages.some((m: string) => m.startsWith('info: Imported')),
-    'import reported the result'
+    testHarness.messages.some((m: string) => m.startsWith('info: Import complete. Added:')),
+    'import completion was reported'
   );
 });
 
@@ -227,27 +391,41 @@ test('menu context keys follow the active tab', async () => {
   await sleep(80);
   assert.equal(testHarness.contextKeys.get('pin-context.hasActiveEditor'), true);
   assert.equal(testHarness.contextKeys.get('pin-context.isPinned'), false, 'fresh tab is unpinned');
-  assert.equal(
-    testHarness.contextKeys.get('pin-context.pinnedResources'),
-    'pin-context.pinnedResourceState'
-  );
-
-  const state = testHarness.commands.get('pin-context.pinnedResourceState');
-  assert.ok(state, 'pinned resource state command is registered');
-  assert.equal(state(g), undefined, 'unpinned file answers "not in collection"');
+  const initialPinnedPaths = testHarness.contextKeys.get(
+    'pin-context.pinnedResourcePaths'
+  ) as Record<string, true>;
+  assert.ok(initialPinnedPaths && typeof initialPinnedPaths === 'object');
+  assert.equal(initialPinnedPaths[g.path], undefined, 'the active resource starts unpinned');
 
   await run('pin-context.pinCurrentEditor');
   await sleep(150);
   assert.equal(
     testHarness.contextKeys.get('pin-context.isPinned'),
     true,
-    'after pin the key flips'
+    'after pin the active-editor key flips'
   );
-  assert.ok(state(g), 'pinned file answers with a defined value');
+  assert.equal(
+    (testHarness.contextKeys.get('pin-context.pinnedResourcePaths') as Record<string, true>)[
+      g.path
+    ],
+    true,
+    'after pin the Explorer membership map includes the file path'
+  );
+  assert.ok(
+    (testHarness.contextKeys.get('pin-context.pinnedResources') as string[]).includes(g.toString()),
+    'after pin the Explorer membership list includes the full URI'
+  );
 
   await run('pin-context.unpinCurrentEditor');
   await sleep(150);
   assert.equal(testHarness.contextKeys.get('pin-context.isPinned'), false);
+  assert.equal(
+    (testHarness.contextKeys.get('pin-context.pinnedResourcePaths') as Record<string, true>)[
+      g.path
+    ],
+    undefined,
+    'the active resource is removed from the Explorer membership map after unpin'
+  );
 });
 
 test('no command reported an error during the run', () => {

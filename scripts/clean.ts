@@ -33,4 +33,4 @@ for (const target of targets) {
   console.log(`[clean] removed ${label}`);
 }
 
-console.log(`[clean] ${dryRun ? 'would remove' : 'removed'} ${targets.length} item(s)`);
+console.log(`[clean] ${dryRun ? 'targets to remove' : 'targets removed'}: ${targets.length}`);

@@ -5,13 +5,16 @@ import { ContextQuickPickItem } from '../types';
 import { PinStore } from '../stores/pinStore';
 
 function describeContext(context: { source: string; changed?: number; staged?: number }): string {
+  if (context.source === 'repo') {
+    return t('Repository context');
+  }
   if (context.source !== 'git') {
     return t('Manual context');
   }
   const changed = context.changed ?? 0;
   const staged = context.staged ?? 0;
   return changed || staged
-    ? `Git context · changed: ${changed}, staged: ${staged}`
+    ? t('Git context · changed: {0}, staged: {1}', changed, staged)
     : t('Git context');
 }
 
@@ -39,7 +42,7 @@ export async function showSwitchContextQuickPick(contextStore: ContextStore): Pr
     contextId: context.id,
     label: context.id === activeId ? `$(check) ${context.name}` : context.name,
     description: describeContext(context),
-    detail: context.id === activeId ? 'Active' : undefined
+    detail: context.id === activeId ? t('Active') : undefined
   }));
 
   if (items.length === 0) {
@@ -70,7 +73,7 @@ export async function showCreateContextQuickPick(contextStore: ContextStore): Pr
         return t('Name is required');
       }
       return contextStore.hasManualContextName(value)
-        ? 'A context with this name already exists'
+        ? t('A context with this name already exists')
         : undefined;
     }
   });
@@ -106,7 +109,7 @@ export async function showRenameContextQuickPick(
         return t('Name is required');
       }
       return contextStore.hasManualContextName(value, picked.contextId)
-        ? 'A context with this name already exists'
+        ? t('A context with this name already exists')
         : undefined;
     }
   });
@@ -239,7 +242,7 @@ async function pickContext(
   const items: ContextQuickPickItem[] = manualContexts.map((context) => ({
     contextId: context.id,
     label: context.name,
-    description: context.id === activeId ? 'Active' : undefined
+    description: context.id === activeId ? t('Active') : undefined
   }));
   if (items.length === 0) {
     void vscode.window.showInformationMessage(t('No manual contexts found'));
@@ -251,7 +254,7 @@ async function pickContext(
   });
 }
 
-/** Default file name of the export dialog; contexts can appear in the name, so it is localized. */
+/** Default file name of the export dialog; include a sanitized localized product name. */
 function suggestedExportFileName(): string {
   const active = contextFileNamePart(vscode.l10n.t('Pin Context'));
   return `pin-contexts${active ? `-${active}` : ''}.json`;
@@ -274,12 +277,12 @@ export async function showExportContextsQuickPick(contextStore: ContextStore): P
   type ContextExportPickItem = vscode.QuickPickItem & { contextId?: string; all?: boolean };
   const items: ContextExportPickItem[] = contexts.map((context) => ({
     label: context.name,
-    description: t('{0} files', context.pinnedUris.length),
+    description: t('Files: {0}', context.pinnedUris.length),
     contextId: context.id
   }));
   const allItem: ContextExportPickItem = {
     label: t('All contexts'),
-    description: t('{0} contexts', contexts.length),
+    description: t('Contexts: {0}', contexts.length),
     all: true
   };
   items.push(allItem);
@@ -311,7 +314,11 @@ export async function showExportContextsQuickPick(contextStore: ContextStore): P
 
   if (await contextStore.exportContexts(target, selected)) {
     void vscode.window.showInformationMessage(
-      t('Exported {0} context(s) to {1}', selected.length, vscode.workspace.asRelativePath(target))
+      t(
+        'Export complete. Contexts exported: {0}; file: {1}',
+        selected.length,
+        vscode.workspace.asRelativePath(target)
+      )
     );
   }
 }
@@ -339,6 +346,6 @@ export async function showImportContextsQuickPick(contextStore: ContextStore): P
     return;
   }
   void vscode.window.showInformationMessage(
-    t('Imported {0} new, updated {1} context(s)', result.added, result.updated)
+    t('Import complete. Added: {0}; updated: {1}', result.added, result.updated)
   );
 }

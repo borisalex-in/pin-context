@@ -1,3 +1,5 @@
+import * as path from 'node:path';
+
 /* Minimal in-memory stand-in for the `vscode` module, enough to run the extension logic. */
 
 type Listener<T> = (e: T) => unknown;
@@ -200,6 +202,8 @@ export const testHarness = {
   findFilesAnswers: [] as Uri[][],
   clipboardReads: [] as string[],
   clipboardWrites: [] as string[],
+  clipboardText: '',
+  explorerSelectionPaths: [] as string[],
   // In-memory file system: writtenFiles mirrors readableFiles so export→import round-trips work.
   readableFiles: new Map<string, string>(),
   writtenFiles: new Map<string, string>(),
@@ -208,7 +212,7 @@ export const testHarness = {
   // `setContext` calls recorded as key → last value, so menu context keys are assertable.
   contextKeys: new Map<string, unknown>(),
   activeEditorChanged: new EventEmitter<{ textEditor: unknown }>(),
-  // All registered commands, including internal ones like `pin-context.pinnedResourceState`.
+  // All registered commands, including internal extension commands.
   commands: new Map<string, (...args: unknown[]) => unknown>(),
   fireActiveEditorChange(): void {
     setImmediate(() => this.activeEditorChanged.fire({ textEditor: undefined }));
@@ -229,11 +233,14 @@ export const testHarness = {
     this.findFilesAnswers.length = 0;
     this.clipboardReads.length = 0;
     this.clipboardWrites.length = 0;
+    this.clipboardText = '';
+    this.explorerSelectionPaths.length = 0;
     this.readableFiles.clear();
     this.writtenFiles.clear();
     this.fsWrites.length = 0;
     this.contextKeys.clear();
     this.commands.clear();
+    this.mcpProviders.clear();
     Object.assign(this.settings, settingsDefaults);
   },
   openTab(uri: Uri, pinned = false): void {
@@ -264,6 +271,7 @@ export const testHarness = {
     }
   },
   registeredCommands: new Map<string, (...args: unknown[]) => unknown>(),
+  mcpProviders: new Map<string, unknown>(),
   gitRoot: undefined as string | undefined,
   // Fake `vscode.git` API surface. Undefined by default: getExtension('vscode.git')
   // returns undefined and consumers fall back to the git CLI, like a VS Code without
@@ -292,6 +300,10 @@ const commands = {
   async executeCommand(id: string, ...args: unknown[]): Promise<unknown> {
     if (id === 'setContext') {
       testHarness.contextKeys.set(args[0] as string, args[1]);
+      return undefined;
+    }
+    if (id === 'copyFilePath') {
+      testHarness.clipboardText = testHarness.explorerSelectionPaths.join('\n');
       return undefined;
     }
     if (id === 'vscode.open') {
@@ -382,6 +394,18 @@ export const workspace = {
   get workspaceFolders() {
     return [{ uri: Uri.file(testHarness.workspaceRoot), name: 'ws', index: 0 }];
   },
+  getWorkspaceFolder(uri: Uri) {
+    const root = path.resolve(testHarness.workspaceRoot);
+    const candidate = path.resolve(uri.fsPath);
+    const relative = path.relative(root, candidate);
+    if (
+      relative === '' ||
+      (relative !== '..' && !relative.startsWith(`..${path.sep}`) && !path.isAbsolute(relative))
+    ) {
+      return { uri: Uri.file(root), name: 'ws', index: 0 };
+    }
+    return undefined;
+  },
   getConfiguration: (_section?: string) => ({
     get: <T>(key: string, fallback?: T): T =>
       (key in testHarness.settings ? testHarness.settings[key] : fallback) as T,
@@ -434,8 +458,12 @@ export const env = {
   clipboard: {
     writeText: async (value: string) => {
       testHarness.clipboardWrites.push(value);
+      testHarness.clipboardText = value;
     },
-    readText: async () => testHarness.clipboardReads.shift() ?? ''
+    readText: async () => {
+      testHarness.clipboardReads.push(testHarness.clipboardText);
+      return testHarness.clipboardText;
+    }
   }
 };
 export const l10n = {
@@ -445,6 +473,24 @@ export const l10n = {
       ? message.replace(/\{(\d+)\}/g, (_match, index: string) => String(args[Number(index)]))
       : message
 };
+export class McpStdioServerDefinition {
+  cwd?: Uri;
+  constructor(
+    readonly label: string,
+    readonly command: string,
+    readonly args: string[],
+    readonly env: Record<string, string>,
+    readonly version: string
+  ) {}
+}
+
+export const lm = {
+  registerMcpServerDefinitionProvider(id: string, provider: unknown): Disposable {
+    testHarness.mcpProviders.set(id, provider);
+    return new Disposable(() => testHarness.mcpProviders.delete(id));
+  }
+};
+
 export const extensions = {
   getExtension: (id: string) => testHarness.gitExtensionById(id)
 };
@@ -466,6 +512,9 @@ export function createExtensionContext() {
   return {
     subscriptions: [] as { dispose(): unknown }[],
     globalState: memento(),
-    workspaceState: memento()
+    workspaceState: memento(),
+    storageUri: Uri.file(path.join(testHarness.workspaceRoot, '.pin-context-test-storage')),
+    globalStorageUri: Uri.file(path.join(testHarness.workspaceRoot, '.pin-context-global-storage')),
+    extensionPath: testHarness.workspaceRoot
   };
 }

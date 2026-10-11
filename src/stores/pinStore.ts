@@ -101,8 +101,8 @@ export class PinStore implements vscode.Disposable {
         this.notifyTabChange();
         this.scheduleRefresh();
       }),
-      // The Explorer menu needs the pinned state of the file the user is looking at, so the
-      // context keys are refreshed on every active-tab change, not only on pin-set changes.
+      // Active-editor context keys follow tab focus. The Explorer's pinned-path map is also
+      // refreshed here and whenever the pin set changes, keeping Pin/Unpin menu items in sync.
       vscode.window.tabGroups.onDidChangeTabGroups(() => this.updateContextKeys()),
       vscode.window.onDidChangeActiveTextEditor(() => this.updateContextKeys()),
       vscode.workspace.onDidDeleteFiles((event) => this.handleDeletedFiles(event.files)),
@@ -113,22 +113,6 @@ export class PinStore implements vscode.Disposable {
           this.schedulePersist();
         }
       })
-    );
-
-    this.context.subscriptions.push(
-      vscode.commands.registerCommand('pin-context.pinnedResourceState', (resource: unknown) =>
-        resource instanceof vscode.Uri && this.isPinned(resource)
-          ? 'Pin Context: pinned'
-          : undefined
-      )
-    );
-    // Explorer menu `when` clauses can test membership: `resource in
-    // pin-context.pinnedResources`. VS Code queries the registered command with the
-    // resource URI; a defined answer means the resource is "in" the collection.
-    void vscode.commands.executeCommand(
-      'setContext',
-      'pin-context.pinnedResources',
-      'pin-context.pinnedResourceState'
     );
 
     this.initializeFromPersistedState();
@@ -479,10 +463,34 @@ export class PinStore implements vscode.Disposable {
     const activeTab = vscode.window.tabGroups.activeTabGroup?.activeTab;
     const uri = activeTab ? getPrimaryTabUri(activeTab) : undefined;
     const trackable = uri !== undefined && isTrackableUri(uri);
+
+    // Explorer context menus expose the selected URI through `resource` and its local path
+    // through `resourcePath`. Match both representations: the full URI is canonical for the
+    // context key, while the path map remains as a compatibility fallback.
+    const pinnedResources = new Set<string>();
+    const pinnedResourcePaths: Record<string, true> = {};
+    for (const pinnedUri of this.getPinnedUris()) {
+      if (pinnedUri.scheme !== 'file') {
+        continue;
+      }
+      pinnedResources.add(pinnedUri.toString());
+      pinnedResources.add(pinnedUri.toString(true));
+      pinnedResourcePaths[pinnedUri.path] = true;
+      pinnedResourcePaths[pinnedUri.fsPath] = true;
+    }
+
+    void vscode.commands.executeCommand('setContext', 'pin-context.pinnedResources', [
+      ...pinnedResources
+    ]);
+    void vscode.commands.executeCommand(
+      'setContext',
+      'pin-context.pinnedResourcePaths',
+      pinnedResourcePaths
+    );
     void vscode.commands.executeCommand(
       'setContext',
       'pin-context.isPinned',
-      trackable && this.isUriPinned(uri)
+      trackable && this.isUriPinned(uri!)
     );
     void vscode.commands.executeCommand('setContext', 'pin-context.hasActiveEditor', trackable);
   }
@@ -618,7 +626,11 @@ export class PinStore implements vscode.Disposable {
       if (remainder > 0) {
         logger.debug(`Restore limited to ${reopenLimit} files, kept ${remainder} in tree only.`);
         void vscode.window.showInformationMessage(
-          `Restored ${reopenTargets.length} pinned tab(s). ${remainder} more remain in the sidebar.`
+          t(
+            'Restore complete. Files reopened: {0}; remaining in the sidebar only: {1}.',
+            reopenTargets.length,
+            remainder
+          )
         );
       }
     }
@@ -654,7 +666,7 @@ export class PinStore implements vscode.Disposable {
     }
 
     if (missing.length > 0 && !this.disposed) {
-      logger.debug(`Removing ${missing.length} pinned file(s) that no longer exist`);
+      logger.debug(`Removing ${missing.length} pinned-file records for files that no longer exist`);
       this.removePinnedRecords(missing);
     }
   }
@@ -693,7 +705,7 @@ export class PinStore implements vscode.Disposable {
           title: options?.title ?? (shouldPin ? t('Pinning files') : t('Unpinning files'))
         },
         async (progress) => {
-          progress.report({ message: t('Processing {0} item(s)...', unique.length) });
+          progress.report({ message: t('Processing items ({0})...', unique.length) });
           const result = await this.executeBatch(unique, shouldPin, options, progress);
           progress.report({ message: t('Finalizing...') });
           return result;

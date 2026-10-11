@@ -40,7 +40,7 @@ export class PinnedFolderItem extends PinnedTreeItem {
     super(path.basename(folderPath) || folderPath, vscode.TreeItemCollapsibleState.Expanded);
 
     const relative = vscode.workspace.asRelativePath(folderPath);
-    const count = t('{0} files', fileCount);
+    const count = t('Files: {0}', fileCount);
     this.id = `pin-folder:${folderPath}`;
     this.description = relative !== path.basename(folderPath) ? `${count} · ${relative}` : count;
     this.iconPath = new vscode.ThemeIcon('folder');
@@ -92,7 +92,7 @@ class EmptyPinnedItem extends vscode.TreeItem {
     this.description = t('Pin files to see them here');
     this.command = {
       command: 'pin-context.pinCurrentEditor',
-      title: t('Pin Current Editor')
+      title: t('Pin Current File')
     };
   }
 }
@@ -149,14 +149,24 @@ export class ContextItem extends vscode.TreeItem {
     super(context.name, vscode.TreeItemCollapsibleState.None);
 
     const parts: string[] = [];
-    parts.push(active ? t('Active') : context.source);
+    parts.push(
+      active
+        ? t('Active')
+        : context.source === 'git'
+          ? t('Git context')
+          : context.source === 'repo'
+            ? t('Repository context')
+            : t('Manual context')
+    );
     if (context.source === 'git' && (context.changed || context.staged)) {
-      parts.push(`changed: ${context.changed ?? 0}, staged: ${context.staged ?? 0}`);
+      parts.push(
+        t('Git context · changed: {0}, staged: {1}', context.changed ?? 0, context.staged ?? 0)
+      );
     }
 
     this.id = `context:${context.id}`;
     this.description = parts.join(' · ');
-    this.tooltip = `${context.name}\n${t('{0} pinned file(s)', context.pinnedUris.length)}`;
+    this.tooltip = `${context.name}\n${t('Pinned files: {0}', context.pinnedUris.length)}`;
     // Git contexts cannot be renamed or deleted, so they get a different contextValue
     // that the menus can target.
     this.contextValue = context.source === 'git' ? 'pinContextGit' : 'pinContext';
@@ -243,8 +253,10 @@ class PinnedTreeDragAndDropController implements vscode.TreeDragAndDropControlle
       );
       return;
     }
-    const failed = result.failed > 0 ? t(', {0} failed', result.failed) : '';
-    void vscode.window.showInformationMessage(t('Pinned {0} item(s){1}', result.success, failed));
+    const failed = result.failed > 0 ? t('; failed: {0}', result.failed) : '';
+    void vscode.window.showInformationMessage(
+      t('Pin operation completed. Successfully pinned: {0}{1}', result.success, failed)
+    );
   }
 
   private async extractUris(dataTransfer: vscode.DataTransfer): Promise<vscode.Uri[]> {

@@ -2,6 +2,35 @@
 
 All notable changes to Pin Context are documented here.
 
+## [0.0.7]
+
+### Added
+
+- Added a unified Pin Context agent API and MCP server so compatible AI agents can read the active context, list contexts and pinned files, inspect workspace folders, and manage contexts or pins through shared, validated operations.
+- Added explicit user confirmation for all agent-initiated state changes. Context deletion is marked as destructive for MCP clients. VS Code Chat uses the host confirmation dialog; external MCP clients use Pin Context’s own confirmation dialog.
+- Added a loopback-only authenticated bridge with a random token and restrictive configuration-file permissions, plus a command to copy MCP client configuration.
+- Added workspace-boundary validation for agent pin/unpin requests and English/Russian localization for agent confirmations and setup messages.
+- Added bilingual MCP setup guidance to the documentation site, with Claude Code and OpenAI Codex as the primary clients and VS Code Chat and other compatible MCP clients as additional options.
+- Added an AI-agent integration card to the features overview and an interactive context-flow diagram for Pin Context, MCP, Claude Code, and Codex.
+
+### Changed
+
+- Reworked the AI-agent documentation around Claude Code and OpenAI Codex, with responsive client tabs, platform-aware setup steps, and links to the official documentation.
+- Reorganized the site navigation with an accessible burger menu for compact viewports, keyboard dismissal, outside-click handling, and section-link validation.
+- Expanded the “Why Pin Context?” comparison to cover Explorer actions, context history, validated JSON transfer, keyboard workflows, MCP access, and approval for state changes.
+- Kept the documentation content width at `min(1320px, calc(100% - 2.5rem))` across breakpoints and added an animated, keyboard-accessible AI context-flow diagram with reduced-motion support.
+- Proofread the English and Russian interface copy, clarified context and pin-operation messages, localized context descriptions and status-bar tooltips, and aligned the documentation site’s minimum VS Code version with the package requirement.
+
+### Fixed
+
+- The documentation’s “test prompt copied” status now disappears after two seconds, and repeated clicks reset the timeout correctly.
+- Restored the localized product-name suffix in the default context-export filename so export dialogs use a predictable, extension-specific name.
+- The website version label in `docs/index.html` is now updated automatically alongside the README version badge during the npm version lifecycle.
+- Removed redundant MCP-provider existence checks that triggered TypeScript TS2774 with the declared VS Code API baseline.
+- Updated Explorer context-menu state tracking to match the selected resource by its full URI and file path, keeping the Pin/Unpin label and shortcut hint in sync after each change.
+- Added visible shortcut hints and keyboard support for Pin File (`Ctrl+Alt+K` / `Cmd+Option+K`) and Unpin File (`Ctrl+Alt+L` / `Cmd+Option+L`) in Explorer. These shortcuts target the selected files in Explorer, not the active editor.
+- Preserved clipboard contents while resolving Explorer selection for keyboard-triggered pin/unpin commands.
+
 ## [0.0.6]
 
 ### Added
@@ -26,6 +55,7 @@ All notable changes to Pin Context are documented here.
 - Fixed persistence-scope handling and migration of existing data.
 - Fixed the missing `contexts.autoSwitchOnGitBranchChange` setting declaration.
 - Fixed `showPinnedCountInStatusBar` so the initial state and subsequent setting changes are respected.
+- Fixed Explorer context-menu actions so Pin File / Unpin File follow the selected resource instead of the active editor; added dedicated, localized commands for each action.
 - Fixed drag-and-drop handling so plain text, folders, and missing files are not pinned as bogus paths.
 - Fixed multi-selection handling in Explorer and the sidebar for pin, unpin, and copy-path commands.
 - Fixed disposal of `GitContextService`, overlapping Git status polls, and Git polling in untrusted workspaces. Git status is collected with a single bounded operation rather than multiple competing processes.
@@ -43,7 +73,7 @@ All notable changes to Pin Context are documented here.
 
 ### Changed
 
-- The Explorer context menu now presents one contextual pin/unpin command instead of several redundant commands. Pin state is exposed through context keys and a pinned-resource collection.
+- The Explorer context menu now shows one state-aware action at a time: Pin File for unpinned resources or Unpin File for pinned resources.
 - Restoring a context preserves editor-group layout; tabs are restored in group order and the previously active tab is focused last.
 - Reduced tab flicker during bulk pin/unpin by processing tabs that already have the target state first and relying on tab-change events where possible instead of fixed polling alone.
 - Changed the default persistence scope for pins and contexts from `globalState` to `workspaceState`, preventing data from leaking between projects. Legacy data is migrated to the selected scope, and scope tracking prevents stale snapshots from being restored later.

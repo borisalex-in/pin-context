@@ -3,10 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Pin Context - VS Code Extension</title>
+    <title data-i18n="site-title">Pin Context — VS Code Extension</title>
     <meta
       name="description"
-      content="Pin Context for VS Code: guided onboarding, keyboard-first pinning, task contexts, and fast workspace navigation."
+      content="Pin Context for VS Code: organize task contexts, pin files from Explorer, and let AI agents access context metadata safely through MCP."
+      data-i18n-content="site-description"
     />
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -17,9 +18,9 @@
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <div class="page">
+    <div class="page" id="top">
       <header class="topbar">
-        <a class="brand" href="#">
+        <a class="brand" href="#top">
           <svg
             width="38px"
             height="38px"
@@ -81,14 +82,40 @@
 
           <span>Pin Context</span>
         </a>
-        <nav class="nav">
+        <nav
+          class="nav"
+          id="siteNav"
+          aria-label="Primary navigation"
+          data-i18n-aria-label="primary-nav"
+        >
           <a href="#features" data-i18n="nav-features">Features</a>
-          <a href="#comparison" data-i18n="nav-why">Why it’s better</a>
-          <a href="#commands" data-i18n="nav-commands">Commands</a>
-          <a href="#workflow" data-i18n="nav-workflow">Workflow</a>
+          <a href="#comparison" data-i18n="nav-why">Benefits</a>
+          <a href="#demo" data-i18n="nav-demo">Live demo</a>
+          <a href="#explorer" data-i18n="nav-explorer">Explorer menu</a>
+          <a href="#agents" data-i18n="nav-agents">AI agents</a>
+          <a href="#commands" data-i18n="nav-commands">Keyboard shortcuts</a>
+          <a href="#workflow" data-i18n="nav-workflow">How it works</a>
         </nav>
         <div class="topbar-actions">
-          <div class="lang-switch" role="group" aria-label="Language switcher">
+          <button
+            class="nav-toggle"
+            id="navToggle"
+            type="button"
+            aria-expanded="false"
+            aria-controls="siteNav"
+            aria-label="Open navigation"
+            data-i18n-aria-label="nav-menu-open"
+          >
+            <span class="nav-toggle-lines" aria-hidden="true">
+              <span></span><span></span><span></span>
+            </span>
+          </button>
+          <div
+            class="lang-switch"
+            role="group"
+            aria-label="Language selector"
+            data-i18n-aria-label="language-switcher"
+          >
             <button class="lang-btn active" type="button" data-lang="en" aria-pressed="true">
               EN
             </button>
@@ -177,71 +204,153 @@
       </header>
 
       <main>
-        <section class="hero">
-          <p class="eyebrow" data-i18n="hero-eyebrow">VS CODE EXTENSION</p>
-          <h1 data-i18n-html="hero-title">Stop losing tabs.<br />Work by context.</h1>
-          <p class="hero-copy" data-i18n="hero-copy">
-            Pin Context helps you organize pinned files into a fast, keyboard-first workflow with
-            dedicated contexts, timeline history, first-run onboarding guidance, and predictable
-            behavior in large codebases.
-          </p>
-          <div class="hero-cta">
-            <a
-              class="button"
-              href="https://marketplace.visualstudio.com/search?term=pin%20context&target=VSCode"
-              data-i18n="install-btn"
-              >Install in VS Code</a
-            >
-            <a
-              class="button button--ghost"
-              href="https://github.com/borisalex-in/pin-context"
-              data-i18n="source-btn"
-              >View Source</a
-            >
-          </div>
-          <div class="hero-meta">
-            <span>TypeScript</span>
-            <span>VS Code >= 1.85</span>
-            <span>MIT License</span>
-          </div>
-          <div class="hero-sidebar-demo">
-            <div class="sidebar-section">
-              <div class="title">📌 Pinned Files <span id="pinCount">(0/21)</span></div>
-              <div class="items" id="pins"></div>
-            </div>
-
-            <div class="sidebar-section">
-              <div class="title">📁 Contexts</div>
-              <div class="items" id="contexts">
-                <div class="item" data-context="manual">
-                  Main <small class="item-type">manual</small>
-                </div>
-                <div class="item active" data-context="master">
-                  master <small class="item-type">git</small>
-                </div>
-                <div class="item" data-context="git">
-                  test-branch <small class="item-type">git</small>
-                </div>
+        <section class="hero" id="demo">
+          <div class="hero-layout">
+            <div class="hero-content">
+              <p class="eyebrow" data-i18n="hero-eyebrow">VS CODE EXTENSION</p>
+              <h1 data-i18n-html="hero-title">Your workspace.<br />Finally under control.</h1>
+              <p class="hero-copy" data-i18n="hero-copy">
+                Pin Context keeps task-related files within reach. Pin or unpin files directly from
+                the VS Code Explorer, switch between focused contexts, and transfer context sets
+                with JSON import and export.
+              </p>
+              <div class="hero-cta">
+                <a
+                  class="button"
+                  href="https://marketplace.visualstudio.com/items?itemName=borisalex-in.pin-context"
+                  data-i18n="install-btn"
+                  >Install Extension</a
+                >
+                <a
+                  class="button button--ghost"
+                  href="https://github.com/borisalex-in/pin-context"
+                  data-i18n="source-btn"
+                  >View on GitHub</a
+                >
+              </div>
+              <div
+                class="hero-meta"
+                aria-label="Extension details"
+                data-i18n-aria-label="extension-details"
+              >
+                <span>v0.0.6</span>
+                <span>VS Code ≥ 1.102</span>
+                <span>MIT License</span>
+                <span data-i18n="hero-meta-json">JSON import / export</span>
+              </div>
+              <div
+                class="hero-proof"
+                aria-label="Key capabilities"
+                data-i18n-aria-label="key-capabilities"
+              >
+                <span
+                  ><b aria-hidden="true">✓</b>
+                  <span data-i18n="hero-proof-explorer">Explorer file actions</span></span
+                >
+                <span
+                  ><b aria-hidden="true">✓</b>
+                  <span data-i18n="hero-proof-contexts">Task and Git contexts</span></span
+                >
+                <span
+                  ><b aria-hidden="true">✓</b>
+                  <span data-i18n="hero-proof-localization">English and Russian UI</span></span
+                >
               </div>
             </div>
 
-            <div class="sidebar-section">
-              <div class="title">🕘 Recent Contexts</div>
-              <div class="group" id="recent">
-                <div class="group-title">Today</div>
-                <div class="item" data-context="manual">Main</div>
-                <div class="item" data-context="git">test-branch</div>
+            <div class="hero-sidebar-demo" id="interactiveDemo" aria-labelledby="demoTitle">
+              <div class="demo-window-bar">
+                <div class="demo-window-dots" aria-hidden="true"><i></i><i></i><i></i></div>
+                <span class="demo-window-brand">PIN CONTEXT</span>
+                <span class="demo-live-badge" data-i18n="demo-live">INTERACTIVE PREVIEW</span>
               </div>
-              <div class="group" id="recent1">
-                <div class="group-title">Yesterday</div>
-                <div class="item" data-context="master">master</div>
+              <div class="demo-app">
+                <aside
+                  class="demo-rail"
+                  aria-label="Demo navigation"
+                  data-i18n-aria-label="demo-navigation"
+                >
+                  <button
+                    type="button"
+                    class="demo-nav-btn active"
+                    data-demo-view="pins"
+                    aria-pressed="true"
+                  >
+                    <span class="demo-nav-icon" aria-hidden="true">⌖</span>
+                    <span data-i18n="demo-nav-pins">Pinned files</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="demo-nav-btn"
+                    data-demo-view="contexts"
+                    aria-pressed="false"
+                  >
+                    <span class="demo-nav-icon" aria-hidden="true">▦</span>
+                    <span data-i18n="demo-nav-contexts">Contexts</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="demo-nav-btn"
+                    data-demo-view="history"
+                    aria-pressed="false"
+                  >
+                    <span class="demo-nav-icon" aria-hidden="true">◷</span>
+                    <span data-i18n="demo-nav-history">Recent</span>
+                  </button>
+                  <div class="demo-rail-footer">
+                    <span class="demo-online-dot"></span
+                    ><span data-i18n="demo-local-state">Local preview</span>
+                  </div>
+                </aside>
+                <div class="demo-main">
+                  <div class="demo-workspace-bar">
+                    <span data-i18n="demo-workspace">WORKSPACE</span>
+                    <span class="demo-branch"
+                      ><span aria-hidden="true">⑂</span> <span id="demoBranch">main</span></span
+                    >
+                  </div>
+                  <div class="demo-context-summary" id="demoHeader"></div>
+                  <label class="demo-search-wrap" id="demoSearchWrap">
+                    <span class="sr-only" data-i18n="demo-search-label"
+                      >Filter files or contexts</span
+                    >
+                    <svg viewBox="0 0 24 24" aria-hidden="true">
+                      <circle cx="10.8" cy="10.8" r="6.8"></circle>
+                      <path d="m16 16 4.5 4.5"></path>
+                    </svg>
+                    <input
+                      id="demoSearch"
+                      type="search"
+                      autocomplete="off"
+                      data-i18n-placeholder="demo-search-pins"
+                      data-i18n-aria-label="demo-search-label"
+                      placeholder="Filter pinned files…"
+                      aria-label="Search files or paths"
+                    />
+                    <span class="demo-search-tag" data-i18n="demo-filter-tag">FILTER</span>
+                  </label>
+                  <div class="demo-panel-content" id="demoPanelContent" aria-live="polite"></div>
+                  <div class="demo-footer" id="demoFooter"></div>
+                  <p
+                    class="demo-status"
+                    id="demoStatus"
+                    role="status"
+                    aria-live="polite"
+                    data-i18n="demo-ready"
+                  >
+                    Try switching contexts, pinning a file, or exporting JSON.
+                  </p>
+                </div>
               </div>
+              <p class="demo-caption" data-i18n="demo-caption">
+                A small interactive preview — changes stay in this page.
+              </p>
             </div>
           </div>
         </section>
 
         <section id="features" class="section">
-          <h2 data-i18n="features-title">Core capabilities</h2>
+          <h2 data-i18n="features-title">Built for real development tasks</h2>
           <div class="grid grid--features">
             <article class="card">
               <svg class="card-icon" viewBox="0 0 24 24" fill="none">
@@ -252,10 +361,10 @@
                   stroke-linejoin="round"
                 />
               </svg>
-              <h3 data-i18n="feature-1-title">High-speed pin actions</h3>
+              <h3 data-i18n="feature-1-title">Pin control where you need it</h3>
               <p data-i18n="feature-1-desc">
-                Pin, unpin, and toggle the active editor, pin all open tabs, or pin by glob
-                patterns.
+                Pin or unpin open tabs, toggle the active file’s pin state, or use the Explorer
+                context menu without opening the file first.
               </p>
             </article>
             <article class="card">
@@ -297,9 +406,10 @@
                   stroke-width="1.8"
                 />
               </svg>
-              <h3 data-i18n="feature-2-title">Task-oriented contexts</h3>
+              <h3 data-i18n="feature-2-title">Work by context</h3>
               <p data-i18n="feature-2-desc">
-                Save your current pinned tabs as a named context and restore them instantly later.
+                Group files by task, feature, or workflow. Save a set and restore it when you
+                return.
               </p>
             </article>
             <article class="card">
@@ -320,10 +430,10 @@
                   stroke-linecap="round"
                 />
               </svg>
-              <h3 data-i18n="feature-3-title">Keyboard-first access</h3>
+              <h3 data-i18n="feature-3-title">Fast keyboard-first navigation</h3>
               <p data-i18n="feature-3-desc">
-                Use quick picks, command palette actions, and fuzzy search to navigate pinned files
-                in seconds.
+                Use keyboard shortcuts, the Command Palette, and Quick Picks to navigate your
+                workspace with less friction.
               </p>
             </article>
             <article class="card">
@@ -338,7 +448,7 @@
               </svg>
               <h3 data-i18n="feature-4-title">Context timeline</h3>
               <p data-i18n="feature-4-desc">
-                Return to recently used contexts from a structured timeline grouped by day.
+                Return to recently used contexts from a timeline grouped by day.
               </p>
             </article>
             <article class="card">
@@ -354,10 +464,10 @@
                 />
                 <path d="M9 4v16" stroke="currentColor" stroke-width="1.8" />
               </svg>
-              <h3 data-i18n="feature-5-title">Unified sidebar</h3>
+              <h3 data-i18n="feature-5-title">One unified view</h3>
               <p data-i18n="feature-5-desc">
-                Manage active context, all contexts, recent history, and pinned files from one
-                dedicated view.
+                Manage pinned files, named contexts, and recent history from the Pin Context
+                sidebar.
               </p>
             </article>
             <article class="card">
@@ -374,9 +484,68 @@
                 <circle cx="14" cy="16" r="1.5" fill="currentColor" />
                 <circle cx="20" cy="8" r="1.5" fill="currentColor" />
               </svg>
-              <h3 data-i18n="feature-6-title">Built for large projects</h3>
+              <h3 data-i18n="feature-6-title">Stable in large projects</h3>
               <p data-i18n="feature-6-desc">
-                Batching, limits, and smart updates keep the extension responsive at scale.
+                Batch limits, safe URI validation, and resilient persistence help keep workflows
+                predictable.
+              </p>
+            </article>
+            <article class="card">
+              <svg class="card-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M8 5H5a2 2 0 0 0-2 2v3m13-5h3a2 2 0 0 1 2 2v3M3 14v3a2 2 0 0 0 2 2h3m8 0h3a2 2 0 0 0 2-2v-3"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                />
+                <path
+                  d="m8 12 2.4 2.4L16.5 8"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <h3 data-i18n="feature-7-title">Explorer context menu</h3>
+              <p data-i18n="feature-7-desc">
+                Right-click a file to pin or unpin it. The available action matches the file’s
+                current state.
+              </p>
+            </article>
+            <article class="card">
+              <svg class="card-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <path
+                  d="M12 3v12m0 0 4-4m-4 4-4-4M5 17v3h14v-3"
+                  stroke="currentColor"
+                  stroke-width="1.8"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+              <h3 data-i18n="feature-8-title">Portable context sets</h3>
+              <p data-i18n="feature-8-desc">
+                Export contexts to JSON and import them elsewhere. Imported data is validated, and
+                contexts are merged by name.
+              </p>
+            </article>
+            <article class="card card--ai-integration">
+              <svg class="card-icon" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="3" stroke="currentColor" stroke-width="1.8" />
+                <circle cx="5" cy="5" r="2" stroke="currentColor" stroke-width="1.8" />
+                <circle cx="19" cy="5" r="2" stroke="currentColor" stroke-width="1.8" />
+                <circle cx="5" cy="19" r="2" stroke="currentColor" stroke-width="1.8" />
+                <circle cx="19" cy="19" r="2" stroke="currentColor" stroke-width="1.8" />
+                <path
+                  d="m7 6.5 3 3m7-3-3 3m-7 8 3-3m7 3-3-3"
+                  stroke="currentColor"
+                  stroke-width="1.6"
+                  stroke-linecap="round"
+                />
+              </svg>
+              <h3 data-i18n="feature-9-title">AI-agent integration</h3>
+              <p data-i18n="feature-9-desc">
+                Share context metadata with Claude Code, OpenAI Codex, and compatible MCP clients.
+                Changes require your approval.
               </p>
             </article>
           </div>
@@ -386,28 +555,50 @@
           <h2 data-i18n="comparison-title">Why Pin Context?</h2>
 
           <div class="comparison-toggle">
-            <button class="toggle-btn active" data-target="vscode">VS Code</button>
-            <button class="toggle-btn" data-target="pincontext">Pin Context</button>
+            <button
+              class="toggle-btn active"
+              type="button"
+              data-target="vscode"
+              aria-pressed="true"
+              data-i18n="comparison-baseline-label"
+            >
+              VS Code alone
+            </button>
+            <button
+              class="toggle-btn"
+              type="button"
+              data-target="pincontext"
+              aria-pressed="false"
+              data-i18n="comparison-product-label"
+            >
+              With Pin Context
+            </button>
           </div>
 
           <div class="comparison-content">
             <div class="comparison-panel active" data-panel="vscode">
               <ul class="comparison-list">
-                <li data-i18n="cmp-vscode-1">Pinned tabs mix across tasks</li>
-                <li data-i18n="cmp-vscode-2">Manual tab management</li>
-                <li data-i18n="cmp-vscode-3">No task separation</li>
-                <li data-i18n="cmp-vscode-4">No history of contexts</li>
-                <li data-i18n="cmp-vscode-5">Limited keyboard workflow</li>
+                <li data-i18n="cmp-vscode-1">Open tabs do not form named task contexts</li>
+                <li data-i18n="cmp-vscode-2">File sets must be rebuilt manually</li>
+                <li data-i18n="cmp-vscode-3">No dedicated context timeline</li>
+                <li data-i18n="cmp-vscode-4">No built-in JSON transfer for Pin Context sets</li>
+                <li data-i18n="cmp-vscode-5">No Pin Context-specific Explorer actions</li>
+                <li data-i18n="cmp-vscode-6">No Pin Context metadata tools for MCP agents</li>
+                <li data-i18n="cmp-vscode-7">No context-change approval flow for this feature</li>
+                <li data-i18n="cmp-vscode-8">No named context restore workflow</li>
               </ul>
             </div>
 
             <div class="comparison-panel" data-panel="pincontext">
               <ul class="comparison-list">
-                <li data-i18n="cmp-pin-1">Separate contexts per task</li>
-                <li data-i18n="cmp-pin-2">Instant context switching</li>
-                <li data-i18n="cmp-pin-3">Timeline with history</li>
-                <li data-i18n="cmp-pin-4">Keyboard-first navigation</li>
-                <li data-i18n="cmp-pin-5">Built for large projects</li>
+                <li data-i18n="cmp-pin-1">Named contexts for tasks and workflows</li>
+                <li data-i18n="cmp-pin-2">Pin or unpin files directly in Explorer</li>
+                <li data-i18n="cmp-pin-3">Restore task-specific file sets</li>
+                <li data-i18n="cmp-pin-4">Context history and fast switching</li>
+                <li data-i18n="cmp-pin-5">Portable, validated JSON import and export</li>
+                <li data-i18n="cmp-pin-6">Keyboard shortcuts and Quick Picks</li>
+                <li data-i18n="cmp-pin-7">MCP and public API for compatible AI agents</li>
+                <li data-i18n="cmp-pin-8">Explicit approval before context changes</li>
               </ul>
             </div>
           </div>
@@ -415,7 +606,12 @@
 
         <section id="commands" class="section">
           <h2 data-i18n="commands-title">Default shortcuts</h2>
-          <div class="os-switch" role="group" aria-label="Platform switcher">
+          <div
+            class="os-switch"
+            role="group"
+            aria-label="Platform switcher"
+            data-i18n-aria-label="platform-switcher"
+          >
             <button
               class="os-btn active"
               type="button"
@@ -432,43 +628,657 @@
               aria-pressed="false"
               data-i18n="commands-os-win"
             >
-              Windows/Linux
+              Windows / Linux
             </button>
           </div>
           <div class="grid grid--commands">
             <article class="command-card">
-              <p class="command-title" data-i18n="cmd-1-title">Pin Current Editor</p>
-              <p class="command-desc" data-i18n="cmd-1-desc">Pin the active tab.</p>
+              <p class="command-title" data-i18n="cmd-1-title">Pin current file</p>
+              <p class="command-desc" data-i18n="cmd-1-desc">
+                Pin the active editor file or the file selected in Explorer.
+              </p>
               <code data-shortcut="pin">Command + Option + K</code>
             </article>
             <article class="command-card">
-              <p class="command-title" data-i18n="cmd-2-title">Unpin Current Editor</p>
-              <p class="command-desc" data-i18n="cmd-2-desc">Remove the pin from the active tab.</p>
+              <p class="command-title" data-i18n="cmd-2-title">Unpin current file</p>
+              <p class="command-desc" data-i18n="cmd-2-desc">
+                Unpin the active editor file or the file selected in Explorer.
+              </p>
               <code data-shortcut="unpin">Command + Option + L</code>
             </article>
             <article class="command-card">
-              <p class="command-title" data-i18n="cmd-3-title">Toggle Pin Current Editor</p>
-              <p class="command-desc" data-i18n="cmd-3-desc">Toggle pin state with one shortcut.</p>
+              <p class="command-title" data-i18n="cmd-3-title">Toggle pin for current file</p>
+              <p class="command-desc" data-i18n="cmd-3-desc">
+                Toggle pinning for the active editor file or the file selected in Explorer.
+              </p>
               <code data-shortcut="toggle">Command + Option + J</code>
             </article>
             <article class="command-card">
-              <p class="command-title" data-i18n="cmd-4-title">Switch Context</p>
+              <p class="command-title" data-i18n="cmd-4-title">Switch context</p>
               <p class="command-desc" data-i18n="cmd-4-desc">
-                Quickly switch between pin contexts.
+                Switch to another task context in one step.
               </p>
               <code data-shortcut="switch">Command + Option + P</code>
             </article>
           </div>
         </section>
 
+        <section id="explorer" class="section section--explorer-help">
+          <div class="section-heading">
+            <p class="eyebrow" data-i18n="explorer-eyebrow">
+              A QUICK ACTION, RIGHT WHERE YOU NEED IT
+            </p>
+            <h2 data-i18n="explorer-title">Pin files directly from Explorer</h2>
+            <p class="section-intro" data-i18n="explorer-intro">
+              You no longer need to open a file first. Right-click a file in the Explorer tree:
+              unpinned files show “Pin File”, while pinned files show “Unpin File”. Multi-selection
+              is supported.
+            </p>
+          </div>
+          <div class="explorer-help-grid">
+            <article class="explorer-help-card">
+              <span class="explorer-step-number">01</span>
+              <div>
+                <h3 data-i18n="explorer-step-1-title">Choose a file</h3>
+                <p data-i18n="explorer-step-1-desc">
+                  Right-click a file in the Explorer sidebar, even if it is not open in an editor.
+                </p>
+              </div>
+            </article>
+            <article class="explorer-help-card">
+              <span class="explorer-step-number">02</span>
+              <div>
+                <h3 data-i18n="explorer-step-2-title">Pin or unpin</h3>
+                <p data-i18n="explorer-step-2-desc">
+                  The menu offers the action that matches the selected file’s current pin state.
+                </p>
+              </div>
+            </article>
+            <article class="explorer-help-card">
+              <span class="explorer-step-number">03</span>
+              <div>
+                <h3 data-i18n="explorer-step-3-title">Keep the task focused</h3>
+                <p data-i18n="explorer-step-3-desc">
+                  Save the resulting set as a context, then switch back to it when you return to the
+                  task.
+                </p>
+              </div>
+            </article>
+          </div>
+          <div
+            class="explorer-menu-preview"
+            aria-label="Example Explorer context menu"
+            data-i18n-aria-label="explorer-example-menu"
+          >
+            <div class="explorer-file-row">
+              <span class="file-type-icon file-type-icon--ts">TS</span
+              ><span
+                ><strong>contextStore.ts</strong><small>src / stores / contextStore.ts</small></span
+              ><span class="explorer-file-tag" data-i18n="explorer-example-file">FILE</span>
+            </div>
+            <div class="explorer-menu-items">
+              <div class="explorer-menu-item">
+                <span aria-hidden="true">📌</span
+                ><span data-i18n="explorer-menu-pin">Pin File</span>
+              </div>
+              <div class="explorer-menu-divider"></div>
+              <div class="explorer-menu-item explorer-menu-item--muted">
+                <span aria-hidden="true">↗</span
+                ><span data-i18n="explorer-menu-reveal">Reveal in Explorer</span>
+              </div>
+            </div>
+            <p data-i18n="explorer-menu-caption">
+              Example of the file action. The menu changes to “Unpin File” once the file is pinned.
+            </p>
+          </div>
+        </section>
+
+        <section id="agents" class="section section--agents">
+          <div class="agent-hero-grid">
+            <div class="section-heading agent-section-heading">
+              <p class="eyebrow" data-i18n="agents-eyebrow">MCP INTEGRATION</p>
+              <h2 data-i18n="agents-title">Connect your AI agent to the active context</h2>
+              <p class="section-intro" data-i18n="agents-intro">
+                Pin Context exposes the active VS Code context through a public extension API and
+                MCP. Claude Code, OpenAI Codex, and other compatible agents can inspect contexts and
+                pinned files. Any changes require your approval.
+              </p>
+            </div>
+
+            <aside
+              class="agent-flow-visual"
+              aria-label="Interactive AI context flow"
+              data-i18n-aria-label="agent-flow-aria"
+            >
+              <div class="agent-flow-header">
+                <span class="agent-flow-indicator" aria-hidden="true"></span>
+                <span data-i18n="agent-flow-title">Context flow</span>
+                <span class="agent-flow-badge" data-i18n="agent-flow-badge">MCP · LIVE DEMO</span>
+              </div>
+              <div
+                class="agent-flow-stage"
+                role="group"
+                aria-label="Select a node to inspect that step"
+                data-i18n-aria-label="agent-flow-stage-aria"
+              >
+                <svg
+                  class="agent-flow-lines"
+                  viewBox="0 0 360 190"
+                  preserveAspectRatio="none"
+                  aria-hidden="true"
+                  focusable="false"
+                >
+                  <defs>
+                    <linearGradient id="agentFlowGradient" x1="0" y1="0" x2="1" y2="0">
+                      <stop offset="0%" stop-color="#5cb458" stop-opacity="0.25" />
+                      <stop offset="50%" stop-color="#8be184" stop-opacity="0.9" />
+                      <stop offset="100%" stop-color="#64c4f5" stop-opacity="0.7" />
+                    </linearGradient>
+                  </defs>
+                  <path class="agent-flow-path" d="M78 95 C100 95 108 95 132 95" />
+                  <path class="agent-flow-path" d="M180 95 C210 95 214 52 244 52" />
+                  <path class="agent-flow-path" d="M180 95 C210 95 214 142 244 142" />
+                  <circle class="agent-flow-pulse agent-flow-pulse--one" r="3.5">
+                    <animateMotion
+                      dur="2.2s"
+                      repeatCount="indefinite"
+                      path="M78 95 C100 95 108 95 132 95"
+                    />
+                  </circle>
+                  <circle class="agent-flow-pulse agent-flow-pulse--two" r="3.5">
+                    <animateMotion
+                      dur="3s"
+                      repeatCount="indefinite"
+                      path="M180 95 C210 95 214 52 244 52"
+                    />
+                  </circle>
+                  <circle class="agent-flow-pulse agent-flow-pulse--three" r="3.5">
+                    <animateMotion
+                      dur="3s"
+                      begin="-1.5s"
+                      repeatCount="indefinite"
+                      path="M180 95 C210 95 214 142 244 142"
+                    />
+                  </circle>
+                </svg>
+                <button
+                  class="agent-flow-node agent-flow-node--context is-active"
+                  type="button"
+                  data-agent-flow="context"
+                  data-agent-flow-title="agent-flow-context-title"
+                  data-agent-flow-desc="agent-flow-context-desc"
+                  aria-pressed="true"
+                >
+                  <span class="agent-flow-node-icon" aria-hidden="true">⌘</span
+                  ><span data-i18n="agent-flow-context">Pin Context</span>
+                </button>
+                <button
+                  class="agent-flow-node agent-flow-node--mcp"
+                  type="button"
+                  data-agent-flow="mcp"
+                  data-agent-flow-title="agent-flow-mcp-title"
+                  data-agent-flow-desc="agent-flow-mcp-desc"
+                  aria-pressed="false"
+                >
+                  <span class="agent-flow-node-icon" aria-hidden="true">↔</span
+                  ><span data-i18n="agent-flow-mcp">MCP</span>
+                </button>
+                <button
+                  class="agent-flow-node agent-flow-node--claude"
+                  type="button"
+                  data-agent-flow="claude"
+                  data-agent-flow-title="agent-flow-claude-title"
+                  data-agent-flow-desc="agent-flow-claude-desc"
+                  aria-pressed="false"
+                >
+                  <span class="agent-flow-node-icon" aria-hidden="true">✳</span
+                  ><span data-i18n="agent-flow-claude">Claude Code</span>
+                </button>
+                <button
+                  class="agent-flow-node agent-flow-node--codex"
+                  type="button"
+                  data-agent-flow="codex"
+                  data-agent-flow-title="agent-flow-codex-title"
+                  data-agent-flow-desc="agent-flow-codex-desc"
+                  aria-pressed="false"
+                >
+                  <span class="agent-flow-node-icon" aria-hidden="true">◎</span
+                  ><span data-i18n="agent-flow-codex">Codex</span>
+                </button>
+              </div>
+              <div class="agent-flow-explainer" aria-live="polite" aria-atomic="true">
+                <span class="agent-flow-explainer-mark" aria-hidden="true">↳</span>
+                <div>
+                  <strong id="agentFlowStatus" data-i18n="agent-flow-context-title"
+                    >Start with the active context</strong
+                  >
+                  <p id="agentFlowDescription" data-i18n="agent-flow-context-desc">
+                    Pin Context exposes context metadata and pinned-file paths. The agent reads file
+                    contents using its own workspace tools.
+                  </p>
+                </div>
+              </div>
+            </aside>
+          </div>
+
+          <div class="agent-benefit-grid">
+            <article class="agent-benefit-card">
+              <span class="agent-benefit-icon" aria-hidden="true">◉</span>
+              <div>
+                <h3 data-i18n="agents-benefit-1-title">One shared context API</h3>
+                <p data-i18n="agents-benefit-1-desc">
+                  Claude Code, OpenAI Codex, VS Code Chat, and other MCP clients use the same tools
+                  to work with contexts.
+                </p>
+              </div>
+            </article>
+            <article class="agent-benefit-card">
+              <span class="agent-benefit-icon" aria-hidden="true">⌕</span>
+              <div>
+                <h3 data-i18n="agents-benefit-2-title">Read context before acting</h3>
+                <p data-i18n="agents-benefit-2-desc">
+                  Agents can inspect the active context and its pinned-file list. They read file
+                  contents through their own workspace tools.
+                </p>
+              </div>
+            </article>
+            <article class="agent-benefit-card">
+              <span class="agent-benefit-icon" aria-hidden="true">✓</span>
+              <div>
+                <h3 data-i18n="agents-benefit-3-title">You approve changes</h3>
+                <p data-i18n="agents-benefit-3-desc">
+                  Changing contexts or pinned files requires approval. If you cancel, the state
+                  remains unchanged.
+                </p>
+              </div>
+            </article>
+          </div>
+
+          <div class="agent-setup-shell">
+            <div class="agent-setup-heading">
+              <div>
+                <p class="eyebrow" data-i18n="agents-setup-eyebrow">QUICK SETUP</p>
+                <h3 data-i18n="agents-setup-title">Connect an AI agent</h3>
+                <p class="agent-setup-subtitle" data-i18n="agents-setup-subtitle">
+                  Choose a client to see setup steps for its configuration format.
+                </p>
+              </div>
+              <span class="agent-protocol-badge"><span aria-hidden="true"></span>MCP · API v1</span>
+            </div>
+
+            <p class="agent-prereq-note agent-global-prereq">
+              <strong data-i18n="agents-source-build-title"
+                >Building the extension from source?</strong
+              >
+              <span data-i18n="agents-source-build-prefix">Run</span> <code>npm ci</code>
+              <span data-i18n="agents-source-build-then">and</span>
+              <code>npm run reinstall:local</code
+              ><span data-i18n="agents-source-build-suffix">
+                to build and install the extension with MCP support. Skip these steps if you
+                installed a Marketplace build that already includes MCP support.</span
+              >
+            </p>
+
+            <div
+              class="agent-client-tabs"
+              role="tablist"
+              aria-label="AI client setup"
+              data-i18n-aria-label="agents-tablist-label"
+            >
+              <button
+                class="agent-client-tab is-active"
+                id="agent-tab-claude"
+                type="button"
+                role="tab"
+                aria-selected="true"
+                aria-controls="agent-panel-claude"
+                data-agent-client="claude"
+                data-i18n="agents-tab-claude"
+              >
+                Claude Code
+              </button>
+              <button
+                class="agent-client-tab"
+                id="agent-tab-codex"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="agent-panel-codex"
+                data-agent-client="codex"
+                data-i18n="agents-tab-codex"
+              >
+                OpenAI Codex
+              </button>
+              <button
+                class="agent-client-tab"
+                id="agent-tab-vscode"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="agent-panel-vscode"
+                data-agent-client="vscode"
+                data-i18n="agents-tab-vscode"
+              >
+                VS Code Chat
+              </button>
+              <button
+                class="agent-client-tab"
+                id="agent-tab-other"
+                type="button"
+                role="tab"
+                aria-selected="false"
+                aria-controls="agent-panel-other"
+                data-agent-client="other"
+                data-i18n="agents-tab-other"
+              >
+                Other MCP clients
+              </button>
+            </div>
+
+            <div
+              class="agent-client-panel is-active"
+              id="agent-panel-claude"
+              role="tabpanel"
+              aria-labelledby="agent-tab-claude"
+              data-agent-panel="claude"
+            >
+              <div class="agent-panel-copy">
+                <span class="agent-step-label" data-i18n="agents-claude-label"
+                  >CLAUDE CODE · STDIO</span
+                >
+                <h4 data-i18n="agents-claude-title">
+                  Connect Claude Code to the active VS Code workspace
+                </h4>
+                <ol class="agent-instructions">
+                  <li>
+                    <span data-i18n="agents-claude-step-1"
+                      >Open the target project in VS Code, wait for Pin Context to activate, then
+                      run “Pin Context: Copy MCP Client Configuration”.</span
+                    >
+                  </li>
+                  <li>
+                    <span data-i18n="agents-claude-step-2"
+                      >Copy the <code>mcpServers.pin-context</code> object from the generated JSON,
+                      without the outer <code>mcpServers</code> object.</span
+                    >
+                  </li>
+                  <li>
+                    <span data-i18n="agents-claude-step-3"
+                      >Run the command below in a terminal, replacing the placeholder with the exact
+                      JSON object from the generated configuration:</span
+                    >
+                    <div class="agent-command-block">
+                      <code
+                        >claude mcp add-json pin-context '&lt;copied pin-context JSON object&gt;'
+                        --scope user</code
+                      >
+                    </div>
+                  </li>
+                  <li>
+                    <span data-i18n="agents-claude-step-4"
+                      >Run <code>claude mcp list</code>, then use <code>/mcp</code> inside Claude
+                      Code to confirm that the server is connected.</span
+                    >
+                  </li>
+                </ol>
+                <a
+                  class="agent-doc-link"
+                  href="https://code.claude.com/docs/en/mcp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  ><span data-i18n="agents-claude-docs">Official Claude Code MCP guide</span
+                  ><span aria-hidden="true">↗</span></a
+                >
+              </div>
+              <aside class="agent-panel-aside">
+                <p class="agent-aside-title" data-i18n="agents-scope-title">
+                  Workspace and session requirements
+                </p>
+                <p data-i18n="agents-claude-note">
+                  The generated bridge configuration is tied to the current VS Code extension
+                  session. Keep that workspace open. If the connection stops working after VS Code
+                  reloads, copy the configuration again and update the Claude Code server entry.
+                </p>
+                <div class="agent-mini-status">
+                  <span class="agent-status-dot"></span
+                  ><span data-i18n="agents-status-claude"
+                    >Verify the connection with <code>/mcp</code> in Claude Code.</span
+                  >
+                </div>
+              </aside>
+            </div>
+
+            <div
+              class="agent-client-panel"
+              id="agent-panel-codex"
+              role="tabpanel"
+              aria-labelledby="agent-tab-codex"
+              data-agent-panel="codex"
+              hidden
+            >
+              <div class="agent-panel-copy">
+                <span class="agent-step-label" data-i18n="agents-codex-label"
+                  >OPENAI CODEX · CONFIG.TOML</span
+                >
+                <h4 data-i18n="agents-codex-title">
+                  Connect Pin Context to Codex CLI or its IDE extension
+                </h4>
+                <ol class="agent-instructions">
+                  <li>
+                    <span data-i18n="agents-codex-step-1"
+                      >Open the target project in VS Code, wait for Pin Context to activate, and run
+                      “Pin Context: Copy MCP Client Configuration”.</span
+                    >
+                  </li>
+                  <li>
+                    <span data-i18n="agents-codex-step-2"
+                      >Open <code>~/.codex/config.toml</code> and add the server table below. Copy
+                      the exact <code>command</code>, <code>args</code>, and
+                      <code>PIN_CONTEXT_VERSION</code> values from the generated JSON.</span
+                    >
+                    <pre class="agent-config-code"><code>[mcp_servers.pin-context]
+command = "node"
+args = [
+  "/ABSOLUTE/PATH/TO/out/mcp-server.js",
+  "--bridge-config",
+  "/ABSOLUTE/PATH/TO/BRIDGE_CONFIG"
+]
+env = { PIN_CONTEXT_VERSION = "COPY_VERSION_VALUE" }</code></pre>
+                  </li>
+                  <li>
+                    <span data-i18n="agents-codex-step-3"
+                      >Replace each placeholder with the corresponding value from the generated
+                      configuration. Keep the argument order unchanged.</span
+                    >
+                  </li>
+                  <li>
+                    <span data-i18n="agents-codex-step-4"
+                      >Run <code>codex mcp list</code>. In the Codex TUI, you can also run
+                      <code>/mcp</code> to inspect the connection.</span
+                    >
+                  </li>
+                </ol>
+                <a
+                  class="agent-doc-link"
+                  href="https://developers.openai.com/codex/mcp"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  ><span data-i18n="agents-codex-docs">Official Codex MCP guide</span
+                  ><span aria-hidden="true">↗</span></a
+                >
+              </div>
+              <aside class="agent-panel-aside">
+                <p class="agent-aside-title" data-i18n="agents-scope-title">
+                  Workspace and session requirements
+                </p>
+                <p data-i18n="agents-codex-note">
+                  Codex CLI and its IDE extension use the same user-level MCP configuration. Keep
+                  the VS Code workspace connected to Pin Context open. If Node.js is not on the
+                  client’s PATH, set <code>command</code> to its absolute path: use
+                  <code>which node</code> on macOS/Linux or <code>where node</code> on Windows.
+                </p>
+                <div class="agent-mini-status">
+                  <span class="agent-status-dot"></span
+                  ><span data-i18n="agents-status-codex"
+                    >Verify that <code>codex mcp list</code> includes
+                    <code>pin-context</code>.</span
+                  >
+                </div>
+              </aside>
+            </div>
+
+            <div
+              class="agent-client-panel"
+              id="agent-panel-vscode"
+              role="tabpanel"
+              aria-labelledby="agent-tab-vscode"
+              data-agent-panel="vscode"
+              hidden
+            >
+              <div class="agent-panel-copy">
+                <span class="agent-step-label" data-i18n="agents-vscode-label"
+                  >BUILT-IN MCP PROVIDER</span
+                >
+                <h4 data-i18n="agents-vscode-title">Use Pin Context tools in VS Code Chat</h4>
+                <ol class="agent-instructions">
+                  <li data-i18n="agents-vscode-step-1">
+                    Open VS Code Chat, then open the tool picker.
+                  </li>
+                  <li data-i18n="agents-vscode-step-2">
+                    Find Pin Context and enable its tools for the current chat.
+                  </li>
+                  <li data-i18n="agents-vscode-step-3">
+                    Try the read-only test prompt below. VS Code shows its own confirmation dialog
+                    for MCP tools that change state.
+                  </li>
+                </ol>
+              </div>
+              <aside class="agent-panel-aside">
+                <p class="agent-aside-title" data-i18n="agents-permissions">Permissions</p>
+                <p data-i18n="agents-vscode-note">
+                  Read-only operations do not change extension state. VS Code asks for approval
+                  before running an MCP tool that changes state; review the requested action before
+                  approving it.
+                </p>
+              </aside>
+            </div>
+
+            <div
+              class="agent-client-panel"
+              id="agent-panel-other"
+              role="tabpanel"
+              aria-labelledby="agent-tab-other"
+              data-agent-panel="other"
+              hidden
+            >
+              <div class="agent-panel-copy">
+                <span class="agent-step-label" data-i18n="agents-other-label"
+                  >STDIO · LOCAL PROCESS</span
+                >
+                <h4 data-i18n="agents-other-title">Connect another MCP-compatible client</h4>
+                <ol class="agent-instructions">
+                  <li>
+                    <span data-i18n="agents-other-step-1"
+                      >Ensure Pin Context is active in the VS Code workspace you want to
+                      expose.</span
+                    >
+                  </li>
+                  <li>
+                    <span data-i18n="agents-other-step-2"
+                      >Run “Pin Context: Copy MCP Client Configuration”, then copy the
+                      <code>mcpServers.pin-context</code> object from the generated JSON.</span
+                    >
+                  </li>
+                  <li>
+                    <span data-i18n="agents-other-step-3"
+                      >Add the entry to the client’s stdio MCP configuration. Keep the command,
+                      argument order, and environment variables unchanged.</span
+                    >
+                  </li>
+                  <li>
+                    <span data-i18n="agents-other-step-4"
+                      >Restart the client or reconnect to the MCP server, then confirm that the Pin
+                      Context tools appear in the tool list.</span
+                    >
+                  </li>
+                </ol>
+                <a
+                  class="agent-doc-link"
+                  href="https://docs.kodacode.ru/desktop/features/mcp.html"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  ><span data-i18n="agents-koda-docs">Koda MCP setup guide</span
+                  ><span aria-hidden="true">↗</span></a
+                >
+              </div>
+              <aside class="agent-panel-aside">
+                <p class="agent-aside-title" data-i18n="agents-other-note-title">
+                  Local connection
+                </p>
+                <p data-i18n="agents-other-note">
+                  The client starts a local Node.js process that forwards requests to the active
+                  extension. Node.js must be available to the client; set its absolute path if
+                  needed. Do not share the generated bridge configuration with others because it
+                  contains access credentials.
+                </p>
+              </aside>
+            </div>
+
+            <div class="agent-test-card">
+              <div class="agent-test-copy">
+                <span class="agent-step-label" data-i18n="agents-test-label"
+                  >FIRST CONNECTION CHECK</span
+                >
+                <h4 data-i18n="agents-test-title">Test tool discovery without making changes</h4>
+                <p id="agentTestPrompt" data-i18n="agents-test-prompt">
+                  Use the Pin Context MCP tools to report the active context, list available
+                  contexts, and list pinned files. Do not switch contexts or change any pins.
+                </p>
+              </div>
+              <button
+                class="button button--ghost button--small agent-copy-prompt"
+                id="copyAgentTestPrompt"
+                type="button"
+              >
+                <span aria-hidden="true">⧉</span
+                ><span data-i18n="agents-copy-prompt">Copy test prompt</span>
+              </button>
+              <p
+                class="agent-copy-status"
+                id="agentCopyStatus"
+                role="status"
+                aria-live="polite"
+              ></p>
+            </div>
+          </div>
+
+          <p class="agent-safety-note">
+            <span aria-hidden="true">ⓘ</span
+            ><span data-i18n="agents-safety-note"
+              >Pin Context returns context metadata and file paths, not file contents. The agent
+              reads file contents through its own workspace tools. Changes to contexts or pinned
+              files require approval.</span
+            >
+          </p>
+        </section>
+
         <section id="workflow" class="section section--workflow">
-          <h2 data-i18n="workflow-title">Typical workflow</h2>
+          <h2 data-i18n="workflow-title">A workflow that stays out of your way</h2>
           <ol class="steps">
-            <li data-i18n="step-1">Pin files related to your current task.</li>
-            <li data-i18n="step-2">Create a context with a clear, descriptive name.</li>
-            <li data-i18n="step-3">Switch contexts as you move between tasks.</li>
-            <li data-i18n="step-4">Use timeline history to return to recent work quickly.</li>
-            <li data-i18n="step-5">Open pinned files instantly via fuzzy quick open.</li>
+            <li data-i18n="step-1">
+              Pin task-related files from the editor or the Explorer context menu.
+            </li>
+            <li data-i18n="step-2">Save the pinned set as a named context for the task.</li>
+            <li data-i18n="step-3">
+              Switch contexts as you move between features or Git branches.
+            </li>
+            <li data-i18n="step-4">
+              Export context sets to JSON to move them between workspaces or share them with your
+              team.
+            </li>
+            <li data-i18n="step-5">
+              Use Quick Open and the context timeline to return to recent work.
+            </li>
           </ol>
         </section>
 
@@ -666,7 +1476,7 @@
       </main>
 
       <footer class="footer">
-        <p data-i18n="footer-text">Built for focused, high-velocity workflows in VS Code.</p>
+        <p data-i18n="footer-text">Built for developers who move fast.</p>
         <a href="https://github.com/borisalex-in/pin-context"
           >github.com/borisalex-in/pin-context</a
         >
@@ -676,7 +1486,7 @@
           type="button"
           data-i18n="privacy-settings"
         >
-          Privacy &amp; analytics
+          Privacy & analytics
         </button>
       </footer>
     </div>
@@ -692,9 +1502,9 @@
       <div class="analytics-consent__copy">
         <strong id="analyticsConsentTitle" data-i18n="analytics-title">Optional analytics</strong>
         <p id="analyticsConsentText" data-i18n="analytics-copy">
-          With your consent, Google Analytics receives page views and interactions such as feature
-          clicks, language and platform selection, and approximate engagement time. Query strings
-          and URL fragments are removed. Analytics is off unless you accept.
+          With your consent, Google Analytics receives page views and interaction events, such as
+          feature clicks and language or platform selection, plus approximate engagement time. Query
+          strings and URL fragments are removed. Analytics remains off unless you opt in.
         </p>
       </div>
       <div class="analytics-consent__actions">

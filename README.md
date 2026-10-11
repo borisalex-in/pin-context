@@ -2,12 +2,12 @@
 
 [![Version](https://img.shields.io/badge/version-0.0.6-blue.svg)](https://github.com/borisalex-in/pin-context)
 [![License](https://img.shields.io/badge/license-MIT-green.svg)](https://opensource.org/licenses/MIT)
-[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.85.0-007ACC)](https://code.visualstudio.com/)
+[![VS Code](https://img.shields.io/badge/VS%20Code-%5E1.102.0-007ACC)](https://code.visualstudio.com/)
 [![Support](https://img.shields.io/badge/Support-Crypto-FF9900?logo=bitcoin&logoColor=white)](#-support-the-project)
 
 Pin Context helps developers switch tasks without losing focus: save pinned tabs as contexts, restore them instantly, and keep branch-based workflows organized automatically.
 
-🇷🇺 **Русский:** расширение полностью переведено на русский язык — переключите VS Code на русский, и Pin Context автоматически подхватит перевод.
+🇷🇺 **Русский:** расширение полностью переведено на русский язык. Переключите VS Code на русский — интерфейс Pin Context тоже переключится на русский.
 
 ## 💡 Why Developers Use It
 
@@ -19,7 +19,7 @@ Pin Context helps developers switch tasks without losing focus: save pinned tabs
 
 ## 🧩 What You Get
 
-- 🔖 Pin/unpin/toggle current editor, pin all, unpin all, pin by pattern.
+- 🔖 Pin, unpin, or toggle the current file; pin or unpin all open tabs; pin files by pattern.
 - 🗂️ Manual contexts: create, switch, rename, delete.
 - 🌿 Git contexts: auto-maintained per branch (**enabled by default**).
 - 🕘 Context timeline (`Today`, `Yesterday`, `Older`).
@@ -29,14 +29,15 @@ Pin Context helps developers switch tasks without losing focus: save pinned tabs
 - 📦 **Working sets**: each context remembers editor cursors, scroll positions, open tabs, and the editor group layout.
 - 💾 **Repository contexts**: save and share contexts via `.vscode/pin-contexts.json`.
 - 📤 **Export / Import**: save contexts to a JSON file or load from one.
-- 🖱️ **Explorer context menu**: one command to pin/unpin the current file from the Explorer right-click menu.
+- 🖱️ **Explorer context menu**: a context-menu action to pin or unpin the selected file directly from Explorer.
+- 🤖 **AI agent integration**: expose context and pinned-file tools to VS Code Chat and other MCP-compatible agents, with approval for state-changing actions.
 
 ## 🚀 Quick Start (1 Minute)
 
 1. Open and pin a few files.
 2. Run `Pin Context: Create Context`.
 3. Run `Pin Context: Switch Context`.
-4. Create/switch git branch and observe branch-aware contexts.
+4. Create or switch a Git branch and observe branch-aware contexts.
 
 ## 🧠 Typical Developer Scenarios
 
@@ -48,14 +49,18 @@ Pin Context helps developers switch tasks without losing focus: save pinned tabs
 
 ---
 
+## AI Agent Integration
+
+Pin Context exposes a shared agent API and MCP tools for compatible AI agents. Agents can inspect the active context and pinned files, list/switch contexts, and pin or unpin workspace files. Read operations are non-mutating; changes require user approval. See [AI_AGENT_INTEGRATION.md](AI_AGENT_INTEGRATION.md) for Claude Code, Codex, and other MCP client setup, tools, and security details.
+
 ## Commands
 
-- `Pin Context: Pin Current Editor`
-- `Pin Context: Unpin Current Editor`
-- `Pin Context: Toggle Pin Current Editor`
-- `Pin Context: Pin All Opened Editors`
-- `Pin Context: Unpin All Editors`
-- `Pin Context: Pin Editors by Pattern`
+- `Pin Context: Pin Current File`
+- `Pin Context: Unpin Current File`
+- `Pin Context: Toggle Pin for Current File`
+- `Pin Context: Pin All Open Tabs`
+- `Pin Context: Unpin All Open Tabs`
+- `Pin Context: Pin Files by Pattern`
 - `Pin Context: Create Context`
 - `Pin Context: Switch Context`
 - `Pin Context: Rename Context`
@@ -67,17 +72,18 @@ Pin Context helps developers switch tasks without losing focus: save pinned tabs
 - `Pin Context: Import Contexts`
 - `Pin Context: Refresh Pinned Files View`
 - `Pin Context: Toggle View Mode (Tree/List)`
+- `Pin Context: Copy MCP Client Configuration`
 
 ## Default Shortcuts
 
-| Action               | macOS              | Windows/Linux    |
-| -------------------- | ------------------ | ---------------- |
-| Pin Current Editor   | `Cmd + Option + K` | `Ctrl + Alt + K` |
-| Unpin Current Editor | `Cmd + Option + L` | `Ctrl + Alt + L` |
-| Toggle Pin           | `Cmd + Option + J` | `Ctrl + Alt + J` |
-| Switch Context       | `Cmd + Option + P` | `Ctrl + Alt + P` |
+| Action                      | macOS              | Windows/Linux    |
+| --------------------------- | ------------------ | ---------------- |
+| Pin Current File            | `Cmd + Option + K` | `Ctrl + Alt + K` |
+| Unpin Current File          | `Cmd + Option + L` | `Ctrl + Alt + L` |
+| Toggle Pin for Current File | `Cmd + Option + J` | `Ctrl + Alt + J` |
+| Switch Context              | `Cmd + Option + P` | `Ctrl + Alt + P` |
 
-> Since 0.0.6 the Windows/Linux defaults no longer override built-in VS Code shortcuts
+> Since 0.0.6, the default shortcuts on Windows/Linux no longer override built-in VS Code shortcuts
 > (`Ctrl+Shift+P` is the Command Palette). If `Ctrl+Alt+letter` types special characters on
 > your keyboard layout (AltGr), rebind the commands in **Keyboard Shortcuts**.
 
@@ -110,7 +116,7 @@ Pin Context helps developers switch tasks without losing focus: save pinned tabs
 
 - Open the **Pin Context** output channel (`View > Output`) for logs.
 - Enable `pin-context.debug` for verbose logs.
-- Git contexts need `git` in `PATH` and a trusted workspace.
+- Git contexts require Git to be available on `PATH` and the workspace to be trusted.
 
 ## Performance
 

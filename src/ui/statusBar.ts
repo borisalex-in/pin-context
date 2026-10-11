@@ -30,8 +30,8 @@ export class StatusBarManager implements vscode.Disposable {
 
     const nextTooltip = [
       t('Pin Context'),
-      activeContextName ? `Active context: ${activeContextName}` : undefined,
-      'Click to toggle pin on the current editor'
+      activeContextName ? t('Active context: {0}', activeContextName) : undefined,
+      t('Click to pin or unpin the active file')
     ]
       .filter(Boolean)
       .join('\n');

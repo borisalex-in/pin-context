@@ -37,7 +37,7 @@ const USAGE = `Usage:
 Flags:
   --dry-run         print every command as "[dry-run] ..." and change nothing
   --allow-dirty     allow a dirty git working tree when bumping
-  --commit          git add package.json README.md && git commit -m "release: v<version>"
+  --commit          git add package.json README.md docs/index.html && git commit -m "release: v<version>"
   --tag             git tag v<version>
   --push            git push (plus "git push origin v<version>" together with --tag)
   --publish         npx @vscode/vsce publish --no-dependencies
@@ -169,7 +169,7 @@ function describeTree(): string {
   }
   const dirty = gitCapture(['status', '--porcelain']);
   if (dirty === null) return 'unknown (git failed)';
-  return dirty ? `dirty (${dirty.split('\n').length} file(s))` : 'clean';
+  return dirty ? `dirty (changed paths: ${dirty.split('\n').length})` : 'clean';
 }
 
 function printStatus(): void {
@@ -200,7 +200,7 @@ const current = readVersion();
 if (!opts.bump) {
   const message = opts.message ?? `release: v${current}`;
   if (opts.commit) {
-    run('git', ['add', 'package.json', 'README.md'], opts);
+    run('git', ['add', 'package.json', 'README.md', 'docs/index.html'], opts);
     run('git', ['commit', '-m', message], opts);
   }
   if (opts.tag) {
@@ -236,8 +236,8 @@ if (opts.dryRun) {
   console.log('[dry-run] nothing will be changed');
 }
 
-// Bump only package.json/lockfile; the `version` lifecycle script syncs the
-// README badge. Git stays untouched — commit/tag are explicit flags below.
+// Bump package.json/lockfile; the `version` lifecycle script syncs the README
+// badge and docs/index.html hero version. Git mutations remain explicit flags.
 run(npmBin, ['version', opts.bump, '--no-git-tag-version', '--no-commit-hooks'], opts);
 const newVersion = opts.dryRun ? expectedNext : readVersion();
 
@@ -246,7 +246,7 @@ run(npmBin, ['run', 'build:vsix'], opts);
 
 const message = opts.message ?? `release: v${newVersion}`;
 if (opts.commit) {
-  run('git', ['add', 'package.json', 'README.md'], opts);
+  run('git', ['add', 'package.json', 'README.md', 'docs/index.html'], opts);
   run('git', ['commit', '-m', message], opts);
 }
 if (opts.tag) {

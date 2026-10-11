@@ -17,11 +17,17 @@ import { BatchOutcome, PinStore } from '../stores/pinStore';
 import { StatusBarManager } from '../ui/statusBar';
 import { ContextItem, PinnedTreeViewProvider } from '../ui/pinnedTreeView';
 import { initLogger, logger } from '../utils/logger';
+import * as path from 'node:path';
+import { readFileSync } from 'node:fs';
+import { PinContextAgentService } from '../agent/agentApi';
+import { AgentBridgeServer } from '../agent/bridge';
+import { registerMcpServerProvider } from '../agent/mcpProvider';
+import { PinContextAgentApi } from '../agent/publicApi';
 
 const ONBOARDING_SHOWN_KEY = 'pin-context.onboarding.shown.v1';
 const STALE_DISMISS_KEY = 'pin-context.stale.dismissed.v1';
 
-export async function activate(context: vscode.ExtensionContext): Promise<void> {
+export async function activate(context: vscode.ExtensionContext): Promise<PinContextAgentApi> {
   initLogger(context);
 
   const pinStore = new PinStore(context);
@@ -73,13 +79,37 @@ export async function activate(context: vscode.ExtensionContext): Promise<void> 
   registerCommands(context, pinStore, contextStore, pinnedTreeProvider);
   setupStaleContextCleanup(context, contextStore);
 
+  // Agent integrations use the same validated API. Reads are immediate after startup; all
+  // state-changing requests pass through an explicit confirmation boundary.
+  const contextReady = initializeInBackground(context, contextStore, pinStore);
+  void contextReady
+    .then(() => showOnboardingIfNeeded(context))
+    .catch((error) => logger.error('Onboarding failed', error));
+  const agentApi = new PinContextAgentService(contextStore, pinStore, () => contextReady);
+  const agentBridge = new AgentBridgeServer(context, agentApi);
+  const extensionVersion = getExtensionVersion(context);
+  context.subscriptions.push(agentBridge);
+  registerAgentCommands(context, agentBridge, extensionVersion);
+
+  try {
+    // The declared VS Code engine baseline (1.102+) includes the native MCP provider API.
+    // Start the external bridge and register the in-editor provider against that contract.
+    await agentBridge.start();
+    registerMcpServerProvider(context, agentBridge, extensionVersion);
+  } catch (error) {
+    logger.error('Failed to start Pin Context MCP bridge', error);
+    void vscode.window.showWarningMessage(
+      t('Pin Context: AI agent integration could not start. See the output channel for details.')
+    );
+  }
+
   updateTreeViewTitle();
   // Note: no unconditional `statusBar.show()` — it ignored `showPinnedCountInStatusBar`.
   updateStatusBar();
 
   // Commands and views are live at this point. Context initialization (git calls, restoring
   // a context) runs in the background, and a failure there can no longer prevent activation.
-  void initializeInBackground(context, contextStore, pinStore);
+  return agentApi.getPublicApi();
 }
 
 async function initializeInBackground(
@@ -101,10 +131,55 @@ async function initializeInBackground(
       )
     );
   }
+}
 
-  // Registered after initialization so that git contexts discovered at startup
-  // do not trigger the "Context created" nudge.
-  await showOnboardingIfNeeded(context).catch((error) => logger.error('Onboarding failed', error));
+function getExtensionVersion(context: vscode.ExtensionContext): string {
+  try {
+    const packagePath = path.join(context.extensionPath, 'package.json');
+    const packageJson = JSON.parse(readFileSync(packagePath, 'utf8')) as { version?: unknown };
+    return typeof packageJson.version === 'string' ? packageJson.version : '0.0.0';
+  } catch (error) {
+    logger.debug(`Could not read extension version: ${String(error)}`);
+    return '0.0.0';
+  }
+}
+
+function registerAgentCommands(
+  context: vscode.ExtensionContext,
+  bridge: AgentBridgeServer,
+  version: string
+): void {
+  context.subscriptions.push(
+    vscode.commands.registerCommand('pin-context.copyAgentMcpConfig', async () => {
+      const configPath = bridge.getConfigPath();
+      if (!configPath) {
+        void vscode.window.showErrorMessage(
+          t('Pin Context: MCP bridge is unavailable. Reload VS Code and try again.')
+        );
+        return;
+      }
+      const serverPath = path.join(context.extensionPath, 'out', 'mcp-server.js');
+      const config = {
+        mcpServers: {
+          'pin-context': {
+            command: 'node',
+            args: [serverPath, '--bridge-config', configPath],
+            env: { PIN_CONTEXT_VERSION: version }
+          }
+        }
+      };
+      await vscode.env.clipboard.writeText(JSON.stringify(config, null, 2));
+      void vscode.window.showInformationMessage(
+        t(
+          'Pin Context: MCP client configuration copied. Keep the VS Code workspace open while using it.'
+        )
+      );
+    })
+  );
+
+  // Registered after store initialization so branch-discovery doesn't trigger the initial
+  // onboarding message. The public agent API does not wait for this optional UI prompt.
+  // (The initialization promise is started in activate.)
 }
 
 function registerCommands(
@@ -136,7 +211,10 @@ function registerCommands(
     } catch (error) {
       await pinStore.unpinUri(uri);
       void vscode.window.showWarningMessage(
-        t('{0} could not be opened and was removed from pins', vscode.workspace.asRelativePath(uri))
+        t(
+          'Could not open {0}; it was removed from the pinned files list',
+          vscode.workspace.asRelativePath(uri)
+        )
       );
       logger.debug(`Open failed for ${uri.toString()}: ${String(error)}`);
       return;
@@ -194,6 +272,36 @@ function registerCommands(
     void vscode.window.showInformationMessage(
       t('Pinned Files view mode: {0}', nextMode === 'tree' ? t('Tree') : t('List'))
     );
+  });
+
+  // Explorer context-menu actions always operate on the resource passed by VS Code,
+  // never fall back to whichever editor happens to be active.
+  registerCommand('pin-context.pinResource', async (arg?: unknown, selected?: unknown) => {
+    const menuUris = collectUris(arg, selected);
+    const uris = (menuUris.length > 0 ? menuUris : await getExplorerResourcesFromKeyboard()).filter(
+      (uri) => uri.scheme === 'file'
+    );
+    if (uris.length === 0) {
+      return;
+    }
+    const result = await pinStore.pinUris(uris, { openIfClosed: true });
+    if (uris.length > 1) {
+      showBatchResult('Pinned', result);
+    }
+  });
+
+  registerCommand('pin-context.unpinResource', async (arg?: unknown, selected?: unknown) => {
+    const menuUris = collectUris(arg, selected);
+    const uris = (menuUris.length > 0 ? menuUris : await getExplorerResourcesFromKeyboard()).filter(
+      (uri) => uri.scheme === 'file'
+    );
+    if (uris.length === 0) {
+      return;
+    }
+    const result = await pinStore.unpinUris(uris);
+    if (uris.length > 1) {
+      showBatchResult('Unpinned', result);
+    }
   });
 
   registerCommand('pin-context.pinCurrentEditor', async (arg?: unknown, selected?: unknown) => {
@@ -254,7 +362,7 @@ function registerCommands(
       // and compared by identity so a translated button still matches.
       const yesLabel = t('Yes');
       const answer = await vscode.window.showWarningMessage(
-        t('Unpin all editors? This will unpin every pinned tab.'),
+        t('Unpin all tabs? This removes pinning from every currently pinned tab.'),
         { modal: true },
         yesLabel
       );
@@ -276,7 +384,7 @@ function registerCommands(
 
     if (pattern && pattern.trim()) {
       const result = await pinStore.pinEditorsByPattern(pattern);
-      showBatchResult('Pinned', result, t('matching "{0}"', pattern.trim()));
+      showBatchResult('Pinned', result, pattern.trim());
     }
   });
 
@@ -340,30 +448,36 @@ function registerCommands(
   });
 }
 
-function showBatchResult(action: 'Pinned' | 'Unpinned', result: BatchOutcome, suffix = ''): void {
-  const detail = suffix ? ` ${suffix}` : '';
-
+function showBatchResult(
+  action: 'Pinned' | 'Unpinned',
+  result: BatchOutcome,
+  pattern?: string
+): void {
   if (result.success === 0 && result.failed === 0) {
-    void vscode.window.showInformationMessage(
-      action === 'Pinned' ? t('No editors to pin{0}', detail) : t('No editors to unpin{0}', detail)
-    );
+    const message = pattern
+      ? t('No files matching "{0}" were found to pin', pattern)
+      : action === 'Pinned'
+        ? t('No files to pin')
+        : t('No files to unpin');
+    void vscode.window.showInformationMessage(message);
     return;
   }
 
-  // Whole phrases are translated (not word fragments) so the translator can pick the
-  // correct word order and case for the count.
-  const parts = [
-    action === 'Pinned'
-      ? t('Pinned {0} editor(s)', result.success)
-      : t('Unpinned {0} editor(s)', result.success)
-  ];
-  if (result.skipped > 0) {
-    parts.push(t('skipped {0}', result.skipped));
-  }
-  if (result.failed > 0) {
-    parts.push(t('failed {0}', result.failed));
-  }
-  const message = `${parts.join(', ')}${detail}`;
+  const details = [
+    result.skipped > 0 ? t('skipped: {0}', result.skipped) : undefined,
+    result.failed > 0 ? t('failed: {0}', result.failed) : undefined
+  ].filter((item): item is string => Boolean(item));
+  const suffix = details.length > 0 ? `; ${details.join('; ')}` : '';
+  const message = pattern
+    ? t(
+        'Pinning files matching "{0}" is complete. Successfully pinned: {1}{2}',
+        pattern,
+        result.success,
+        suffix
+      )
+    : action === 'Pinned'
+      ? t('Pin operation completed. Successfully pinned: {0}{1}', result.success, suffix)
+      : t('Unpin operation completed. Successfully unpinned: {0}{1}', result.success, suffix);
 
   if (result.failed > 0) {
     void vscode.window.showWarningMessage(message);
@@ -374,6 +488,66 @@ function showBatchResult(action: 'Pinned' | 'Unpinned', result: BatchOutcome, su
     return;
   }
   void vscode.window.showInformationMessage(message);
+}
+
+/**
+ * Keybindings do not receive the Explorer resource argument that context-menu commands do.
+ * VS Code exposes the currently focused Explorer selection through its built-in `copyFilePath`
+ * command, so use it as a compatibility bridge and restore the user's clipboard immediately.
+ */
+async function getExplorerResourcesFromKeyboard(): Promise<vscode.Uri[]> {
+  let clipboardBefore = '';
+  try {
+    clipboardBefore = await vscode.env.clipboard.readText();
+  } catch (error) {
+    logger.warn(`Could not read clipboard before Explorer shortcut: ${String(error)}`);
+    return [];
+  }
+
+  // Seed the clipboard with a marker, so a failed copy operation cannot make us act on an
+  // unrelated path that happened to be copied before this command was invoked.
+  const marker = `__pin-context-selection-${Date.now()}-${Math.random()}__`;
+  let copiedPaths = '';
+  try {
+    await vscode.env.clipboard.writeText(marker);
+    await vscode.commands.executeCommand('copyFilePath');
+    copiedPaths = await vscode.env.clipboard.readText();
+  } catch (error) {
+    logger.warn(`Could not read Explorer selection for shortcut: ${String(error)}`);
+  } finally {
+    try {
+      await vscode.env.clipboard.writeText(clipboardBefore);
+    } catch (error) {
+      logger.warn(`Could not restore clipboard after Explorer shortcut: ${String(error)}`);
+    }
+  }
+
+  // If copyFilePath did not replace the marker, do not operate on an unrelated resource.
+  if (!copiedPaths.trim() || copiedPaths === marker) {
+    return [];
+  }
+
+  const unique = new Map<string, vscode.Uri>();
+  for (const value of copiedPaths
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .filter(Boolean)) {
+    let uri: vscode.Uri | undefined;
+    if (/^file:\/\//i.test(value)) {
+      try {
+        uri = vscode.Uri.parse(value);
+      } catch {
+        uri = undefined;
+      }
+    } else if (value.startsWith('/') || /^[a-zA-Z]:[\\/]/.test(value) || /^\\\\/.test(value)) {
+      uri = vscode.Uri.file(value);
+    }
+
+    if (uri?.scheme === 'file') {
+      unique.set(uri.toString(), uri);
+    }
+  }
+  return [...unique.values()];
 }
 
 function getUriFromCommandArg(arg: unknown): vscode.Uri | undefined {
@@ -473,7 +647,7 @@ function setupStaleContextCleanup(
         const keepLabel = t('Keep');
         const answer = await vscode.window.showWarningMessage(
           t(
-            'Pin Context: {0} context(s) belong to branches that no longer exist ({1}{2}). Remove them?',
+            'Pin Context found saved contexts for branches that no longer exist ({1}{2}). Affected contexts: {0}. Remove them?',
             stale.length,
             names,
             more
@@ -483,7 +657,7 @@ function setupStaleContextCleanup(
         );
         if (answer === removeLabel) {
           const removed = await contextStore.removeStaleContexts();
-          void vscode.window.showInformationMessage(t('Removed {0} stale context(s)', removed));
+          void vscode.window.showInformationMessage(t('Removed stale contexts: {0}', removed));
         } else if (answer === keepLabel) {
           await context.globalState.update(STALE_DISMISS_KEY, true);
         }

@@ -10,9 +10,18 @@ This document describes the extension's actual architecture. Keep it up to date 
 
 - Entry point: `src/core/extension.ts` (`activate` / `deactivate`).
 - Activation event: `onStartupFinished`.
-- Build: `esbuild` (`scripts/build.ts`) bundles the extension into a single file, `out/extension.js` (CommonJS, `platform: node`, `target: node18`). The `vscode` module is external; `minimatch` and other dependencies are bundled. Type checking is performed with `tsc --noEmit` for extension source and `tsc -p tsconfig.scripts.json --noEmit` for build/release tooling.
+- Build: `esbuild` (`scripts/build.ts`) creates `out/extension.js` and the standalone `out/mcp-server.js` (CommonJS, Node 18 target). The `vscode` module is external in the extension bundle; the MCP sidecar has no VS Code runtime dependency. Type checking is performed with `tsc --noEmit` for extension source and `tsc -p tsconfig.scripts.json --noEmit` for build/release tooling.
 - `package.json` → `main`: `./out/extension.js`.
-- Packaging: `.vscodeignore` excludes `src/`, `test/`, `scripts/`, `docs/`, `node_modules/`, configuration files, and other development assets. The `.vsix` package contains only `out/extension.js`, `package.json`, `README.md`, `LICENSE`, and `images/`.
+- Packaging: `.vscodeignore` excludes source, tests, scripts, the static `docs/` website, development dependencies, and repository-only documentation. The `.vsix` must include both `out/extension.js` and `out/mcp-server.js`, plus `package.json`, localization bundles, `README.md`, `LICENSE`, and `images/`.
+
+## AI Agent API and MCP
+
+- `src/agent/toolDefinitions.ts` is the shared catalogue of tool names, JSON input schemas, read/write annotations, and human-readable change descriptions.
+- `src/agent/agentApi.ts` validates arguments and maps the tool catalogue to `ContextStore` and `PinStore`; state-changing calls are gated by a confirmation boundary. `src/agent/publicApi.ts` defines the versioned (`apiVersion: 1`) API returned from the extension's `activate()` function.
+- `src/agent/bridge.ts` creates a random-token authenticated HTTP bridge bound only to `127.0.0.1`. Its short-lived config file is stored with restrictive permissions and removed on disposal. File pin operations are restricted to files inside opened workspace folders.
+- `src/agent/mcpProvider.ts` registers an MCP stdio provider with VS Code. `src/agent/mcpServer.ts` is bundled separately because it runs as a child Node process and must keep stdout exclusively for newline-delimited JSON-RPC messages.
+- In-editor MCP mutation calls rely on VS Code's per-tool confirmation dialog. External MCP clients and public API callers go through Pin Context's own modal confirmation. The host-approval secret is injected only into the process started by the in-editor provider and is never written into the external-client config file.
+- `AI_AGENT_INTEGRATION.md` is the user/developer guide. Do not move it or agent instructions into `docs/`, because `docs/` contains the static documentation site.
 
 ## Layers
 
@@ -42,7 +51,7 @@ The source of truth for pinned files.
 - Pinning uses the native `workbench.action.pinEditor` / `unpinEditor` commands. Because these commands act on the active tab, the target tab is activated before the command and the previous focus is restored afterward (`captureActiveTab` / `restoreActiveTab`). Operations are serialized through `OperationQueue` (`batchQueue`, `focusQueue`).
 - To reduce flicker during bulk operations, a batch is processed in an order that minimizes tab switches (`orderForMinimalFocusChanges`): targets already in the desired state first, then the active tab, then the remaining tabs. Tab-model changes are awaited through events (`waitFor` via `notifyTabChange`); polling is used only as a fallback.
 - Persistence: the `pin-context.pinnedUris` key (an array of URI strings), stored in `workspaceState` by default. See [Persistence](#persistence).
-- Menu context keys: after every tab update and active-tab change, it sets `pin-context.isPinned` / `pin-context.hasActiveEditor` (`updateContextKeys`). To check whether a file is pinned, it registers `pin-context.pinnedResourceState` and exposes the `pin-context.pinnedResources` context set (used in `when` clauses as `resource in pin-context.pinnedResources`). The Explorer menu shows one command (Pin or Unpin) instead of three commands at once.
+- Menu context keys: after tab updates and active-tab changes, `updateContextKeys()` sets `pin-context.isPinned` / `pin-context.hasActiveEditor`. For Explorer menus, it publishes `pin-context.pinnedResources` as the set of full URI strings (escaped and unescaped) and `pin-context.pinnedResourcePaths` as a lookup keyed by both `uri.path` and `uri.fsPath`. `package.json` matches `resource` and `resourcePath` against these keys so the menu shows only the appropriate Pin or Unpin action.
 
 ### `ContextStore` (`src/stores/contextStore.ts`)
 
@@ -127,9 +136,9 @@ Both scopes (`globalState` / `workspaceState`) can be selected manually. If the 
 
 ## Tests and Checks
 
-- `npm test` — `node:test` + `tsx`: `test/gitStatus.test.ts` (parser) and `test/extension.smoke.test.ts` (activation and workflows using an in-memory `vscode` mock from `test/vscodeMock.ts`, including a real Git repository).
-- `npm run typecheck` — `tsc --noEmit`.
-- `npm run lint` — ESLint.
+- `npm test` — `node:test` + `tsx`; unit, regression, and smoke tests cover agent tools, the MCP server, context creation/import/export, persistence and rollback, workspace path validation, Git status, localization, and extension workflows using the in-memory `vscode` mock in `test/vscodeMock.ts`.
+- `npm run typecheck` — checks extension TypeScript and build/release scripts using `tsconfig.json` and `tsconfig.scripts.json`.
+- `npm run lint` — ESLint checks `src/**/*.ts` and `scripts/**/*.ts`.
 - `npm run compile` — typecheck + esbuild bundle.
 - `npm run build:vsix` — creates the `.vsix` package (see `.vscodeignore`).
 
