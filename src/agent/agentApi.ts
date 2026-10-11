@@ -5,6 +5,7 @@ import { PinStore } from '../stores/pinStore';
 import { PinContext } from '../types';
 import { logger } from '../utils/logger';
 import { t } from '../l10n';
+import { canRelyOnHostApproval } from './approvalPolicy';
 import { AGENT_TOOL_DEFINITIONS, getAgentToolDefinition } from './toolDefinitions';
 import {
   PinContextAgentApi,
@@ -19,6 +20,8 @@ interface InvocationOptions {
   origin?: InvocationOrigin;
   /** The in-editor MCP host displays a confirmation for each tool not marked read-only. */
   approvedByHost?: boolean;
+  /** Destructive operations always keep Pin Context's own confirmation, even if the host is trusted. */
+  requireOwnConfirmation?: boolean;
 }
 
 type FileDto = PinContextAgentFile;
@@ -124,11 +127,17 @@ function contextSummary(
 }
 
 export class PinContextAgentService {
+  private mcpProviderRegistered = false;
+
   constructor(
     private readonly contexts: ContextStore,
     private readonly pins: PinStore,
     private readonly whenReady: () => Promise<void>
   ) {}
+
+  setMcpProviderRegistered(registered: boolean): void {
+    this.mcpProviderRegistered = registered;
+  }
 
   async executeTool(
     name: PinContextAgentToolName | string,
@@ -145,6 +154,7 @@ export class PinContextAgentService {
     }
     const input = rawInput;
     validateToolInput(input, definition.inputSchema);
+    options = { ...options, requireOwnConfirmation: definition.destructive === true };
 
     switch (name) {
       case 'pin_context_get_status':
@@ -308,7 +318,7 @@ export class PinContextAgentService {
   private async confirmMutation(confirmation: string, options: InvocationOptions): Promise<void> {
     // VS Code's MCP host asks for confirmation for every non-read-only tool. External MCP
     // clients and calls through the public extension API must be confirmed by this extension.
-    if (options.approvedByHost && options.origin === 'vscode-mcp') return;
+    if (canRelyOnHostApproval(options)) return;
     const allow = t('Allow');
     const choice = await vscode.window.showWarningMessage(
       t('Allow Pin Context agent to make this change?'),
@@ -327,6 +337,7 @@ export class PinContextAgentService {
       activeContext: this.getActiveContext(),
       pinnedFileCount: this.pins.getPinnedCount(),
       contextCount: this.contexts.getAllContexts().length,
+      mcpProviderRegistered: this.mcpProviderRegistered,
       workspaceFolders: this.getWorkspaceInfo()
     };
   }

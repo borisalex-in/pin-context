@@ -1,43 +1,31 @@
-# Sources and tooling are not needed at runtime: out/extension.js is self-contained.
+# OS metadata and archive artifacts
+**/.DS_Store
+.gitignore
+.vscodeignore
+**/._*
+__MACOSX/**
+
+# Repository and developer-only files
+**/.git/**
+**/.github/**
+.vscode/**
+.vscode-test/**
+.vscode-test-tools/**
+coverage/**
+**/*.md
+!README.md
+!CHANGELOG.md
+node_modules/**
 src/**
 test/**
+test-integration/**
 scripts/**
 docs/**
 tmp/**
-.github/**
-.husky/**
-.vscode/**
-
-# Dependencies are bundled into out/extension.js by esbuild.
-node_modules/**
-
-# Config and metadata
-tsconfig.json
+*.vsix
+**/*.map
+**/*.tsbuildinfo
+tsconfig*.json
 eslint.config.mjs
 .prettierrc.json
-.prettierignore
-.npmrc
-.gitignore
-*.code-workspace
-
-# Lockfiles and logs
 package-lock.json
-npm-debug.log*
-*.log
-
-# Build artifacts that must not be shipped
-*.vsix
-*.zip
-pin-context.zip
-
-# OS junk
-.DS_Store
-__MACOSX/**
-Thumbs.db
-
-# Repo-only docs
-IMPROVEMENTS.md
-CHANGELOG.md
-architecture.md
-RELEASE.md
-AGENTS.md

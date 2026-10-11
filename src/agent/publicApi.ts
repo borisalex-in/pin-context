@@ -44,6 +44,8 @@ export interface PinContextAgentStatus {
   activeContext: PinContextAgentContextSummary | null;
   pinnedFileCount: number;
   contextCount: number;
+  /** True only after the native VS Code MCP server-definition provider registered successfully. */
+  mcpProviderRegistered: boolean;
   workspaceFolders: PinContextAgentWorkspaceFolder[];
 }
 

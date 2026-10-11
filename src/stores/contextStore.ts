@@ -95,7 +95,17 @@ export class ContextStore implements vscode.Disposable {
     await this.refreshRepoContexts();
     await this.refreshGitContexts();
 
-    if (this.getConfig('contexts.restoreLastContext', false)) {
+    // On a fresh workspace there may be no persisted activeContextId yet. In that case,
+    // seed the active context from the branch that is currently checked out and adopt the
+    // pins already visible in the workbench. Without this, the first branch-change event
+    // treats the new branch as the first active context and the original branch never owns
+    // the pins that were created before the first switch.
+    const restoreLastContext = this.getConfig('contexts.restoreLastContext', false);
+    if (!this.activeContextId && (!restoreLastContext || !this.lastActiveContextId)) {
+      await this.initializeActiveGitContext();
+    }
+
+    if (restoreLastContext) {
       // `lastActiveContextId` is the context *before* the active one; the one that was
       // active when the window closed is `activeContextId`.
       const restoreId = this.activeContextId ?? this.lastActiveContextId;
@@ -434,16 +444,53 @@ export class ContextStore implements vscode.Disposable {
 
         const { toUnpin, toPin } = this.syncService.buildPinDiff(target);
         const title = `Switching to ${target.name}`;
+        logger.info(
+          `[contexts] switch start action=${action} from=${this.activeContextId ?? 'none'} to=${target.id} ` +
+            `savedPins=${target.pinnedUris.length} currentPins=${this.syncService.getPinnedUriStrings().length} ` +
+            `toUnpin=${toUnpin.length} toPin=${toPin.length}`
+        );
 
         if (toUnpin.length > 0 || toPin.length > 0) {
           this.pinsInconsistent = true;
         }
 
         if (!token.isCancellationRequested && toUnpin.length > 0) {
-          await this.pinStore.unpinUris(toUnpin, { showProgress: toUnpin.length > 15, title });
+          let result = await this.pinStore.unpinUris(toUnpin, {
+            showProgress: toUnpin.length > 15,
+            title
+          });
+          logger.info(
+            `[contexts] unpin result context=${target.id} success=${result.success} failed=${result.failed} skipped=${result.skipped}`
+          );
+          // VS Code tab activation can be transiently delayed while Git changes the workbench.
+          // Retry the batch once; already-applied operations are safe no-ops on the next pass.
+          if (result.failed > 0 && !token.isCancellationRequested) {
+            logger.warn(
+              `[contexts] retrying ${result.failed} failed unpin operation(s) for ${target.id}`
+            );
+            result = await this.pinStore.unpinUris(toUnpin, { showProgress: false, title });
+            logger.info(
+              `[contexts] unpin retry context=${target.id} success=${result.success} failed=${result.failed} skipped=${result.skipped}`
+            );
+          }
         }
         if (!token.isCancellationRequested && toPin.length > 0) {
-          await this.pinStore.pinUris(toPin, { showProgress: toPin.length > 15, title });
+          let result = await this.pinStore.pinUris(toPin, {
+            showProgress: toPin.length > 15,
+            title
+          });
+          logger.info(
+            `[contexts] pin result context=${target.id} success=${result.success} failed=${result.failed} skipped=${result.skipped}`
+          );
+          if (result.failed > 0 && !token.isCancellationRequested) {
+            logger.warn(
+              `[contexts] retrying ${result.failed} failed pin operation(s) for ${target.id}`
+            );
+            result = await this.pinStore.pinUris(toPin, { showProgress: false, title });
+            logger.info(
+              `[contexts] pin retry context=${target.id} success=${result.success} failed=${result.failed} skipped=${result.skipped}`
+            );
+          }
         }
 
         if (token.isCancellationRequested) {
@@ -457,6 +504,10 @@ export class ContextStore implements vscode.Disposable {
         await this.workingSet.restore(target, token);
 
         this.setActive(target, action);
+        logger.info(
+          `[contexts] switch complete active=${this.activeContextId} savedPins=${target.pinnedUris.length} ` +
+            `currentPins=${this.syncService.getPinnedUriStrings().length}`
+        );
 
         await this.persist();
         this.onDidChangeEmitter.fire();
@@ -737,6 +788,33 @@ export class ContextStore implements vscode.Disposable {
     return removedContexts.size;
   }
 
+  private async initializeActiveGitContext(): Promise<void> {
+    const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
+    if (workspaceFolders.length === 0) {
+      return;
+    }
+
+    const gitContexts = await this.gitContextService.getCurrentWorkspaceGitContexts();
+    for (const folder of workspaceFolders) {
+      const git = gitContexts.find((item) => item.workspaceFolder === folder.uri.fsPath);
+      if (!git) {
+        continue;
+      }
+
+      const id = gitContextId(git.workspaceFolder, git.branch);
+      const context = this.contexts.get(id);
+      if (!context) {
+        continue;
+      }
+
+      logger.info(
+        `[contexts] initialize active context=${id} existingPins=${context.pinnedUris.length}`
+      );
+      await this.adoptCurrentPins(context);
+      return;
+    }
+  }
+
   private async handleBranchChange(event: GitBranchChange): Promise<void> {
     await this.refreshGitContexts();
 
@@ -746,6 +824,10 @@ export class ContextStore implements vscode.Disposable {
 
     const id = gitContextId(event.workspaceFolder, event.newBranch);
     const target = this.contexts.get(id);
+    logger.info(
+      `[contexts] branch change old=${event.oldBranch} new=${event.newBranch} active=${this.activeContextId ?? 'none'} ` +
+        `targetExists=${Boolean(target)} targetPins=${target?.pinnedUris.length ?? -1}`
+    );
     if (!target || this.activeContextId === id) {
       return;
     }
@@ -769,6 +851,10 @@ export class ContextStore implements vscode.Disposable {
         }
         this.flushActiveContextFromPins();
         target.pinnedUris = this.syncService.getPinnedUriStrings();
+        logger.info(
+          `[contexts] adopt pins context=${target.id} inheritedPins=${target.pinnedUris.length} ` +
+            `previousActive=${this.activeContextId ?? 'none'}`
+        );
         // The context inherits whatever is on screen, so it inherits its layout too.
         this.applyWorkingSet(target);
         this.pinsInconsistent = false;

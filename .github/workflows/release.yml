@@ -1,0 +1,75 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Validate, package, and publish
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install project dependencies
+        run: npm ci
+
+      - name: Run formatting, lint, typecheck, build, and unit/smoke tests
+        run: npm run precommit:check
+
+      - name: Install VS Code integration test runner
+        run: npm run test:integration:install
+
+      - name: Run tests in a real VS Code Extension Host
+        run: xvfb-run -a npm run test:integration
+
+      - name: Build and verify VSIX package contents
+        run: npm run build:vsix
+
+      - name: Verify tag and package versions match
+        shell: bash
+        run: |
+          TAG_VERSION="${GITHUB_REF_NAME#v}"
+          PACKAGE_VERSION="$(node -p "require('./package.json').version")"
+          if [[ "$TAG_VERSION" != "$PACKAGE_VERSION" ]]; then
+            echo "Tag version ($TAG_VERSION) does not match package.json ($PACKAGE_VERSION)." >&2
+            exit 1
+          fi
+
+      - name: Upload VSIX artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: pin-context-${{ github.ref_name }}
+          path: pin-context-*.vsix
+          if-no-files-found: error
+          retention-days: 90
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: pin-context-*.vsix
+          generate_release_notes: true
+          fail_on_unmatched_files: true
+
+      - name: Publish to VS Code Marketplace
+        env:
+          VSCE_PAT: ${{ secrets.VSCE_PAT }}
+        shell: bash
+        run: |
+          if [[ -z "${VSCE_PAT:-}" ]]; then
+            echo "VSCE_PAT is not configured; skipping Marketplace publication. The VSIX is attached to the GitHub Release."
+            exit 0
+          fi
+          npx vsce publish --no-dependencies

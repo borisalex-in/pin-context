@@ -5,6 +5,7 @@ import * as path from 'node:path';
 import * as vscode from 'vscode';
 import { logger } from '../utils/logger';
 import { PinContextAgentService } from './agentApi';
+import { cleanupStaleBridgeConfigs } from './bridgeCleanup';
 
 interface BridgeConfig {
   host: '127.0.0.1';
@@ -65,6 +66,9 @@ export class AgentBridgeServer implements vscode.Disposable {
         : `agent-bridge-${process.pid}.json`;
       this.configPath = path.join(storageDir, name);
       await mkdir(storageDir, { recursive: true });
+      if (!this.context.storageUri) {
+        await cleanupStaleBridgeConfigs(storageDir, process.pid);
+      }
       const config: BridgeConfig = {
         host: '127.0.0.1',
         port: address.port,

@@ -29,6 +29,7 @@ Thumbs.db
 
 # Testing
 .vscode-test/
+.vscode-test-tools/
 test-results/
 
 # Environment

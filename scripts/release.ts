@@ -259,7 +259,12 @@ function run(cmd: string, args: string[], { dryRun }: Pick<ReleaseOptions, 'dryR
   }
   console.log(`[release] $ ${printable}`);
   try {
-    execFileSync(cmd, args, { cwd: root, stdio: 'inherit' });
+    execFileSync(cmd, args, {
+      cwd: root,
+      stdio: 'inherit',
+      // npm/npx are .cmd shims on Windows and require cmd.exe.
+      shell: process.platform === 'win32' && /\.(cmd|bat)$/i.test(cmd)
+    });
   } catch {
     fail(`command failed: ${printable}`);
   }

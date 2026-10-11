@@ -20,7 +20,8 @@ This document describes the extension's actual architecture. Keep it up to date 
 - `src/agent/agentApi.ts` validates arguments and maps the tool catalogue to `ContextStore` and `PinStore`; state-changing calls are gated by a confirmation boundary. `src/agent/publicApi.ts` defines the versioned (`apiVersion: 1`) API returned from the extension's `activate()` function.
 - `src/agent/bridge.ts` creates a random-token authenticated HTTP bridge bound only to `127.0.0.1`. Its short-lived config file is stored with restrictive permissions and removed on disposal. File pin operations are restricted to files inside opened workspace folders.
 - `src/agent/mcpProvider.ts` registers an MCP stdio provider with VS Code. `src/agent/mcpServer.ts` is bundled separately because it runs as a child Node process and must keep stdout exclusively for newline-delimited JSON-RPC messages.
-- In-editor MCP mutation calls rely on VS Code's per-tool confirmation dialog. External MCP clients and public API callers go through Pin Context's own modal confirmation. The host-approval secret is injected only into the process started by the in-editor provider and is never written into the external-client config file.
+- Ordinary in-editor MCP mutations can rely on VS Code's per-tool confirmation. Destructive operations (including context deletion) always display Pin Context's own modal even if the host trusts the server; external MCP clients and public API callers always use Pin Context's confirmation. The host-approval secret is injected only into the process started by the in-editor provider and is never written into the external-client config file.
+- `api.d.ts` is the typed public extension API. Starting with version `1.0.0`, its existing members and semantics, plus the names, input schemas, and result semantics of existing MCP tools, follow a stable compatibility contract: additive backwards-compatible changes are allowed in minor releases and breaking changes require a major release.
 - `AI_AGENT_INTEGRATION.md` is the user/developer guide. Do not move it or agent instructions into `docs/`, because `docs/` contains the static documentation site.
 
 ## Layers
@@ -140,7 +141,8 @@ Both scopes (`globalState` / `workspaceState`) can be selected manually. If the 
 - `npm run typecheck` — checks extension TypeScript and build/release scripts using `tsconfig.json` and `tsconfig.scripts.json`.
 - `npm run lint` — ESLint checks `src/**/*.ts` and `scripts/**/*.ts`.
 - `npm run compile` — typecheck + esbuild bundle.
-- `npm run build:vsix` — creates the `.vsix` package (see `.vscodeignore`).
+- `npm run build:vsix` — creates the `.vsix` package and verifies its file list against `.vscodeignore`.
+- `npm run test:integration:install` + `npm run test:integration` — launches a clean real VS Code Extension Host for activation, Git-context restoration, and MCP-provider checks.
 
 ## Known Limitations
 

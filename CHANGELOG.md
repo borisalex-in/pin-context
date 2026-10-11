@@ -1,15 +1,51 @@
 # Changelog
 
-All notable changes to Pin Context are documented here.
+All notable changes to Pin Context are documented in this file. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and releases use [Semantic Versioning](https://semver.org/).
 
-## [0.0.8]
+## [Unreleased]
+
+### Added
+
+- Added a real VS Code Extension Host integration-test suite for clean-profile activation, Git-branch context restoration, and MCP bridge/provider startup.
+- Added GitHub Actions CI for formatting, linting, strict type checks, unit/smoke tests, real VS Code integration tests, VSIX packaging, and package-content verification. Tag builds publish a GitHub Release and publish to the VS Code Marketplace when `VSCE_PAT` is configured.
+- Added `SECURITY.md`, `CONTRIBUTING.md`, GitHub funding metadata, and a package-content verifier for the release artifact.
+- Added the `mcpProviderRegistered` status flag to the public agent API so clients can tell whether the native VS Code MCP provider registered successfully.
+- Documented the public `api.d.ts` and MCP tool contracts as stable starting with `1.0.0`.
 
 ### Changed
 
-- Made the burger menu the only site navigation on all viewport widths; opening and closing it no longer changes behavior at desktop breakpoints.
-- Updated the release workflow so `release:ship` can safely finalize a version already prepared by `release:patch` without incrementing it twice, and added `release:push` to push the release commit and tag.
+- Pinned `@types/vscode` to `1.102.0`, matching the declared minimum VS Code API baseline.
+- Made the package verifier and release command runner invoke Windows `.cmd` shims through the Windows shell.
+- Localized setting enum descriptions and the contributed MCP provider label in English and Russian.
+- Updated release metadata and package filtering for the published `0.0.8` baseline; VSIX verification now checks required runtime files and rejects repository-only material.
+- Documented that `onStartupFinished` activates the extension after VS Code startup and that copied MCP configuration is tied to the running workspace/bridge.
 
-## [0.0.7]
+### Fixed
+
+- Destructive agent operations, including context deletion, always require Pin Context's own modal confirmation even when an MCP host has been configured to trust the server.
+- Removed the remaining `any[]` command callback type from extension registration.
+- Cleaned stale PID-scoped MCP bridge configuration files on startup without deleting configs for live VS Code processes.
+- Excluded macOS archive artifacts and resource-fork files from VSIX packaging.
+
+## [0.0.8] - 2026-10-11
+
+### Added
+
+- Added an interactive AI context-flow diagram to the documentation site, illustrating how Pin Context connects with Claude Code, OpenAI Codex, and compatible MCP clients.
+- Added package-version synchronization for the documentation site and an explicit `release:push` step for sending the prepared release commit and tag to GitHub.
+
+### Changed
+
+- Reworked the documentation site's navigation to use an accessible hamburger menu at every viewport width.
+- Updated the features and benefits sections to describe the current context-management and AI-agent capabilities.
+- Improved responsive layouts and the English/Russian AI-agent setup guidance.
+
+### Fixed
+
+- Improved release workflow handling so `release:ship` can finish the version-only snapshot created by `release:patch` without bumping the version twice.
+- Aligned release-state tests with the configured npm script commands.
+
+## [0.0.7] - 2026-10-11
 
 ### Added
 
@@ -22,6 +58,8 @@ All notable changes to Pin Context are documented here.
 
 ### Changed
 
+- Made the burger menu the only site navigation on all viewport widths; opening and closing it no longer changes behavior at desktop breakpoints.
+- Updated the release workflow so `release:ship` can safely finalize a version already prepared by `release:patch` without incrementing it twice, and added `release:push` to push the release commit and tag.
 - Reworked the AI-agent documentation around Claude Code and OpenAI Codex, with responsive client tabs, platform-aware setup steps, and links to the official documentation.
 - Reorganized the site navigation with an accessible burger menu for compact viewports, keyboard dismissal, outside-click handling, and section-link validation.
 - Expanded the “Why Pin Context?” comparison to cover Explorer actions, context history, validated JSON transfer, keyboard workflows, MCP access, and approval for state changes.
@@ -38,7 +76,7 @@ All notable changes to Pin Context are documented here.
 - Added visible shortcut hints and keyboard support for Pin File (`Ctrl+Alt+K` / `Cmd+Option+K`) and Unpin File (`Ctrl+Alt+L` / `Cmd+Option+L`) in Explorer. These shortcuts target the selected files in Explorer, not the active editor.
 - Preserved clipboard contents while resolving Explorer selection for keyboard-triggered pin/unpin commands.
 
-## [0.0.6]
+## [0.0.6] - 2026-10-09
 
 ### Added
 
@@ -93,3 +131,8 @@ All notable changes to Pin Context are documented here.
 - Removed repeated onboarding prompts after context creation and switching while retaining initial onboarding.
 - Updated the documentation website so Google Analytics loads only after explicit consent. Visitors can accept or reject analytics and change their choice later; query strings and URL fragments are omitted from analytics page locations.
 - Added repository homepage and issue-tracker metadata and stricter ESLint checks for floating and misused promises.
+
+[Unreleased]: https://github.com/borisalex-in/pin-context/compare/v0.0.8...HEAD
+[0.0.8]: https://github.com/borisalex-in/pin-context/compare/v0.0.7...v0.0.8
+[0.0.7]: https://github.com/borisalex-in/pin-context/compare/v0.0.6...v0.0.7
+[0.0.6]: https://github.com/borisalex-in/pin-context/releases/tag/v0.0.6

@@ -15,6 +15,10 @@ const NOT_A_REPO_RETRY_MS = 30000;
 // so a coarser 15 s interval is fine: branch switches via the API are instant and the
 // slower counters do not justify spawning `git status` every few seconds.
 const FALLBACK_POLL_MS = 15000;
+// Reconcile the lightweight vscode.git snapshot periodically as a safety net for
+// external `git switch`/`git checkout` commands whose repository event can be missed.
+// This does not spawn processes; it only reads the Git extension's in-memory API state.
+const API_RECONCILE_MS = 1000;
 
 export interface GitContextInfo {
   workspaceFolder: string;
@@ -49,6 +53,7 @@ export class GitContextService implements vscode.Disposable {
   private readonly disposables: vscode.Disposable[] = [];
 
   private pollInterval: NodeJS.Timeout | undefined;
+  private apiReconcileInterval: NodeJS.Timeout | undefined;
   private polling = false;
   private disposed = false;
   private gitMissing = false;
@@ -102,6 +107,7 @@ export class GitContextService implements vscode.Disposable {
   dispose(): void {
     this.disposed = true;
     this.stopPolling();
+    this.stopApiReconciliation();
     this.disposables.forEach((d) => d.dispose());
     this.onDidChangeBranchEmitter.dispose();
     this.onDidChangeStatusEmitter.dispose();
@@ -230,6 +236,7 @@ export class GitContextService implements vscode.Disposable {
         }
         this.apiSource = source;
         this.apiActive = true;
+        this.startApiReconciliation();
         this.disposables.push(
           source,
           source.onDidChange(() => this.handleGitApiChange())
@@ -290,6 +297,25 @@ export class GitContextService implements vscode.Disposable {
     } finally {
       this.apiRefreshRunning = false;
     }
+  }
+
+  private startApiReconciliation(): void {
+    if (this.apiReconcileInterval || this.disposed) {
+      return;
+    }
+    this.apiReconcileInterval = setInterval(() => {
+      if (this.shouldTrackGit()) {
+        this.refreshFromApiSource();
+      }
+    }, API_RECONCILE_MS);
+  }
+
+  private stopApiReconciliation(): void {
+    if (!this.apiReconcileInterval) {
+      return;
+    }
+    clearInterval(this.apiReconcileInterval);
+    this.apiReconcileInterval = undefined;
   }
 
   // ---------------------------------------------------------------------------
